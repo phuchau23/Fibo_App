@@ -1,0 +1,10 @@
+export 'domain/entities/class_entity.dart';
+export 'domain/errors/class_failure.dart';
+export 'domain/repositories/class_repository.dart';
+export 'domain/usecases/get_lecturer_classes.dart';
+export 'data/datasources/class_remote_datasource.dart';
+export 'data/models/class_models.dart';
+export 'data/repository/lass_repository_impl.dart';
+export 'presentation/blocs/class_providers.dart';
+export 'presentation/pages/class_list_page.dart';
+export 'presentation/widgets/search_widgets.dart';
