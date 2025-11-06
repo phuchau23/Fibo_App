@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:swp_app/features/class/presentation/pages/class_list_page.dart';
-import 'package:swp_app/features/domains/presentation/pages/domain_page.dart';
+import 'package:swp_app/features/topic/presentation/pages/topic_page.dart';
 import 'package:swp_app/shared/presentation/pages/home_page.dart';
 import 'package:swp_app/shared/presentation/pages/profile_page.dart';
 import 'package:swp_app/shared/presentation/pages/report_page.dart';
@@ -17,7 +17,7 @@ class _FooterMenuState extends State<FooterMenu> {
   int myCurrentIndex = 0;
   bool _isNavVisible = true;
 
-  final pages = [HomePage(), ClassListPage(), DomainTabsPage(), ProfilePage()];
+  final pages = [HomePage(), ClassListPage(), TopicPage(), ProfilePage()];
 
   bool _onScroll(ScrollNotification n) {
     // Chỉ xử lý nếu trang hiện tại có thể cuộn
