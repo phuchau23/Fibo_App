@@ -28,5 +28,11 @@ class ApiEndpoints {
       '/auth/api/groups'; // + '/{groupId}/members'
   static const String groupsRoot = '/auth/api/groups'; // POST create
 
+  // notifications
+  static String notificationsByLecturer(String lecturerId) =>
+      '/course/api/notifications/lecturer/$lecturerId';
+  static const String notifications = '/course/api/notifications';
+  static String notificationById(String id) => '/course/api/notifications/$id';
+
   static const String multipartContentType = 'multipart/form-data';
 }
