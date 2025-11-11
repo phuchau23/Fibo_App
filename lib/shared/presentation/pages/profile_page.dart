@@ -7,6 +7,7 @@ import 'package:swp_app/features/profile/presentation/blocs/profile_providers.da
 import 'package:swp_app/features/profile/domain/entities/user_profile.dart';
 import 'package:swp_app/features/profile/presentation/pages/edit_profile_page.dart';
 import 'package:swp_app/features/profile/presentation/pages/change_password_page.dart';
+import 'package:swp_app/features/auth/presentation/blocs/auth_provider.dart';
 
 /// ===== FPT Blue tone (bản xanh dương) =====
 const _bg = Color(0xFFF6F7F9);
@@ -50,15 +51,15 @@ class ProfilePage extends ConsumerWidget {
   }
 }
 
-class _Content extends StatefulWidget {
+class _Content extends ConsumerStatefulWidget {
   const _Content({required this.profile});
   final UserProfile profile;
 
   @override
-  State<_Content> createState() => _ContentState();
+  ConsumerState<_Content> createState() => _ContentState();
 }
 
-class _ContentState extends State<_Content> {
+class _ContentState extends ConsumerState<_Content> {
   bool notificationOn = true;
 
   void _showFullInfoSheet(UserProfile p) {
@@ -247,8 +248,7 @@ class _ContentState extends State<_Content> {
                           activeColor: _accent,
                           onChanged: (v) => setState(() => notificationOn = v),
                         ),
-                        onTap: () =>
-                            setState(() => notificationOn = !notificationOn),
+                        onTap: () => setState(() => notificationOn = !notificationOn),
                       ),
                     ],
                   ),
@@ -278,7 +278,58 @@ class _ContentState extends State<_Content> {
                     Icons.chevron_right,
                     color: _textSecondary,
                   ),
-                  onTap: () => context.push('/profile/logout'),
+                  onTap: () async {
+                    try {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Đăng xuất'),
+                          content: const Text('Bạn có chắc chắn muốn đăng xuất?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: const Text('Hủy'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              style: TextButton.styleFrom(
+                                foregroundColor: _danger,
+                              ),
+                              child: const Text('Đăng xuất'),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      if (confirmed != true) return;
+
+                      final authController = ref.read(authControllerProvider.notifier);
+                      await authController.logout();
+                      
+                      if (!mounted) return;
+                      
+                      // Clear all routes and go to login
+                      while (context.canPop()) {
+                        context.pop();
+                      }
+                      context.go('/login');
+                      
+                    } catch (e) {
+                      if (mounted) {
+                        final messenger = ScaffoldMessenger.maybeOf(context);
+                        if (messenger != null) {
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('Có lỗi xảy ra khi đăng xuất. Vui lòng thử lại.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        } else {
+                          debugPrint('Lỗi khi đăng xuất: $e');
+                        }
+                      }
+                    }
+                  },
                 ),
               ),
             ]),

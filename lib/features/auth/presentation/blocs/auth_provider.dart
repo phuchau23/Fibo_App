@@ -1,9 +1,7 @@
 // lib/features/auth/presentation/providers/auth_providers.dart
 import 'dart:async';
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dartz/dartz.dart';
-import 'package:swp_app/core/constants/api.constants.dart';
 import 'package:swp_app/core/services/session_provider.dart';
 import 'package:swp_app/core/services/session_service.dart';
 
@@ -28,6 +26,7 @@ class AuthController extends AutoDisposeAsyncNotifier<void> {
   late final AuthRepository _repo;
   late final ApiClient _client;
   late final SessionService session;
+  bool _isLoggingOut = false;
 
   @override
   FutureOr<void> build() {
@@ -91,6 +90,34 @@ class AuthController extends AutoDisposeAsyncNotifier<void> {
     final r = await _repo.getUserById(userId);
     state = const AsyncData(null);
     return r;
+  }
+
+  Future<bool> logout() async {
+    // Prevent multiple simultaneous logout attempts
+    if (_isLoggingOut) return false;
+    
+    _isLoggingOut = true;
+    
+    try {
+      // Clear session data first
+      await session.clear();
+      
+      // Reset state to initial
+      state = const AsyncData(null);
+      return true;
+    } catch (e, stackTrace) {
+      // Log the error
+      print('Error during logout: $e');
+      
+      // Try to set error state, but don't worry if it fails
+      try {
+        state = AsyncError(e, stackTrace);
+      } catch (_) {}
+      
+      return false;
+    } finally {
+      _isLoggingOut = false;
+    }
   }
 }
 
