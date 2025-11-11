@@ -48,32 +48,36 @@ class UpdateProfileController extends AutoDisposeAsyncNotifier<bool> {
     String? dateOfBirth, // yyyy-MM-dd
     String? sex,
     String? address,
-    Uri? avatarFileUri,
   }) async {
-    final repo = ref.read(profileRepositoryProvider);
-    state = const AsyncLoading();
+    try {
+      state = const AsyncLoading();
+      final repo = ref.read(profileRepositoryProvider);
 
-    final Either<Failure, bool> r = await repo.updateProfile(
-      firstname: firstname,
-      lastname: lastname,
-      phoneNumber: phoneNumber,
-      dateOfBirth: dateOfBirth,
-      sex: sex,
-      address: address,
-      avatarFileUri: avatarFileUri,
-    );
+      final result = await repo.updateProfile(
+        firstname: firstname,
+        lastname: lastname,
+        phoneNumber: phoneNumber,
+        dateOfBirth: dateOfBirth,
+        sex: sex,
+        address: address,
+      );
 
-    return r.fold(
-      (Failure l) {
-        state = AsyncError(l, StackTrace.current); // l is non-null Object
-        return false;
-      },
-      (ok) async {
-        state = AsyncData(ok);
-        await ref.read(profileNotifierProvider.notifier).refresh();
-        return ok;
-      },
-    );
+      return result.fold(
+        (failure) {
+          state = AsyncError(failure, StackTrace.current);
+          return false;
+        },
+        (success) async {
+          // Refresh profile data after successful update
+          await ref.read(profileNotifierProvider.notifier).refresh();
+          state = const AsyncData(true);
+          return true;
+        },
+      );
+    } catch (e, stackTrace) {
+      state = AsyncError(e, stackTrace);
+      return false;
+    }
   }
 }
 
