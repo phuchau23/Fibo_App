@@ -25,17 +25,17 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'FILL_ME',
-    appId: 'FILL_ME',
-    messagingSenderId: 'FILL_ME',
-    projectId: 'FILL_ME',
+    apiKey: 'AIzaSyDmeIhMhsKuoIRSkO2CvXHEYNeg6zcA8Es',
+    appId: '1:447224950285:web:a7d76425dd95ecaf53af44',
+    messagingSenderId: '447224950285',
+    projectId: 'fibochatplatform',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'FILL_ME',
-    appId: 'FILL_ME',
-    messagingSenderId: 'FILL_ME',
-    projectId: 'FILL_ME',
+    apiKey: 'AIzaSyAL9XMcaMzEp03daQRyJVk1vu6xSazd8xk',
+    appId: '1:447224950285:android:42977e9388047f2853af44',
+    messagingSenderId: '447224950285',
+    projectId: 'fibochatplatform',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(

@@ -148,7 +148,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   .zero, // để chiếm full và không lộ viền/padding
                               onPressed: async.isLoading ? null : _submit,
                               child: async.isLoading
-                                  ? const ShadProgress(minHeight: 16)
+                                  ? const SizedBox(
+                                      height: 16,
+                                      child: ShadProgress(minHeight: 16),
+                                    )
                                   : const Text(
                                       'Continue',
                                       style: TextStyle(
