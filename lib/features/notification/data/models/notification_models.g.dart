@@ -20,20 +20,6 @@ NotificationModel _$NotificationModelFromJson(Map<String, dynamic> json) =>
       data: json['data'] as Map<String, dynamic>?,
     );
 
-Map<String, dynamic> _$NotificationModelToJson(NotificationModel instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'type': instance.type,
-      'title': instance.title,
-      'description': instance.description,
-      'icon': instance.icon,
-      'relatedEntityId': instance.relatedEntityId,
-      'relatedEntityType': instance.relatedEntityType,
-      'createdAt': instance.createdAt,
-      'isNew': instance.isNew,
-      'data': instance.data,
-    };
-
 PagedNotificationsResponse _$PagedNotificationsResponseFromJson(
         Map<String, dynamic> json) =>
     PagedNotificationsResponse(
@@ -43,15 +29,6 @@ PagedNotificationsResponse _$PagedNotificationsResponseFromJson(
       data:
           NotificationPagedData.fromJson(json['data'] as Map<String, dynamic>),
     );
-
-Map<String, dynamic> _$PagedNotificationsResponseToJson(
-        PagedNotificationsResponse instance) =>
-    <String, dynamic>{
-      'statusCode': instance.statusCode,
-      'code': instance.code,
-      'message': instance.message,
-      'data': instance.data,
-    };
 
 NotificationPagedData _$NotificationPagedDataFromJson(
         Map<String, dynamic> json) =>
@@ -66,15 +43,3 @@ NotificationPagedData _$NotificationPagedDataFromJson(
       hasPreviousPage: json['hasPreviousPage'] as bool,
       hasNextPage: json['hasNextPage'] as bool,
     );
-
-Map<String, dynamic> _$NotificationPagedDataToJson(
-        NotificationPagedData instance) =>
-    <String, dynamic>{
-      'items': instance.items,
-      'totalItems': instance.totalItems,
-      'currentPage': instance.currentPage,
-      'totalPages': instance.totalPages,
-      'pageSize': instance.pageSize,
-      'hasPreviousPage': instance.hasPreviousPage,
-      'hasNextPage': instance.hasNextPage,
-    };

@@ -32,6 +32,12 @@ final uploadDocumentProvider = Provider<UploadDocument>(
 final updateDocumentProvider = Provider<UpdateDocument>(
   (ref) => UpdateDocument(ref.watch(documentRepositoryProvider)),
 );
+final publishDocumentProvider = Provider<PublishDocument>(
+  (ref) => PublishDocument(ref.watch(documentRepositoryProvider)),
+);
+final unpublishDocumentProvider = Provider<UnpublishDocument>(
+  (ref) => UnpublishDocument(ref.watch(documentRepositoryProvider)),
+);
 final deleteDocumentProvider = Provider<DeleteDocument>(
   (ref) => DeleteDocument(ref.watch(documentRepositoryProvider)),
 );

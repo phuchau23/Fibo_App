@@ -163,27 +163,25 @@ class _FeedbackTabState extends ConsumerState<FeedbackTab>
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: Colors.black.withOpacity(.08),
-                    ),
+                    borderSide: BorderSide(color: const Color(0x14000000)),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 10,
+                runSpacing: 10,
                 children: [
-                  ChoiceChip(
+                  _StatusFilterButton(
+                    label: 'Tất cả',
                     selected: state.helpfulFilter == null,
-                    label: const Text('Tất cả'),
-                    onSelected: (_) => _onHelpfulSelected(null),
+                    onPressed: () => _onHelpfulSelected(null),
                   ),
                   ..._helpfulStatuses.map(
-                    (status) => ChoiceChip(
+                    (status) => _StatusFilterButton(
+                      label: status,
                       selected: state.helpfulFilter == status,
-                      label: Text(status),
-                      onSelected: (_) => _onHelpfulSelected(status),
+                      onPressed: () => _onHelpfulSelected(status),
                     ),
                   ),
                 ],
@@ -239,6 +237,36 @@ class _FeedbackTabState extends ConsumerState<FeedbackTab>
   bool get wantKeepAlive => true;
 }
 
+class _StatusFilterButton extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  const _StatusFilterButton({
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        side: BorderSide(
+          color: selected ? const Color(0xFF2563EB) : const Color(0xFFE4E7EC),
+        ),
+        backgroundColor: selected ? const Color(0xFF2563EB) : Colors.white,
+        foregroundColor: selected ? Colors.white : const Color(0xFF475467),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        textStyle: GoogleFonts.manrope(fontWeight: FontWeight.w600),
+      ),
+      child: Text(label),
+    );
+  }
+}
+
 class FeedbackCard extends StatelessWidget {
   final FeedbackEntity feedback;
   final VoidCallback onViewDetail;
@@ -266,11 +294,11 @@ class FeedbackCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: r16,
         border: Border.all(color: const Color(0xFFE4E7EC)),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(.05),
+            color: Color(0x0D000000),
             blurRadius: 16,
-            offset: const Offset(0, 8),
+            offset: Offset(0, 8),
           ),
         ],
       ),
@@ -312,7 +340,7 @@ class FeedbackCard extends StatelessWidget {
                       '${user.studentId ?? user.email} • ${feedback.topic?.name ?? 'Unknown topic'}',
                       style: GoogleFonts.manrope(
                         fontSize: 12,
-                        color: Colors.black.withOpacity(.55),
+                        color: const Color(0x8C000000),
                       ),
                     ),
                   ],
@@ -384,7 +412,7 @@ class FeedbackCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.manrope(
                 fontSize: 13,
-                color: Colors.black.withOpacity(.65),
+                color: const Color(0xA6000000),
               ),
             ),
           const SizedBox(height: 12),
@@ -423,7 +451,7 @@ class _BadgeLabel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -587,7 +615,7 @@ class _FeedbackDetailSheetState extends ConsumerState<FeedbackDetailSheet> {
               const SizedBox(height: 20),
             ],
             DropdownButtonFormField<String>(
-              value: _selectedHelpful,
+              initialValue: _selectedHelpful,
               decoration: const InputDecoration(
                 labelText: 'Cập nhật trạng thái đánh giá',
               ),
@@ -615,6 +643,7 @@ class _FeedbackDetailSheetState extends ConsumerState<FeedbackDetailSheet> {
                       topicId: feedback.topic?.id,
                       topicName: feedback.topic?.name,
                       answerId: feedback.answer!.id,
+                      answerContent: feedback.answer!.content,
                     ),
                   ),
                   icon: const Icon(Icons.question_answer_outlined),
@@ -693,12 +722,12 @@ class _InfoSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.black.withOpacity(.05)),
-        boxShadow: [
+        border: Border.all(color: const Color(0x0D000000)),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(.04),
+            color: Color(0x0A000000),
             blurRadius: 18,
-            offset: const Offset(0, 10),
+            offset: Offset(0, 10),
           ),
         ],
       ),

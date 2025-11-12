@@ -7,6 +7,7 @@ enum NavigationTarget {
   course,
   courseFeedback, // Course tab với Feedback tab được chọn
   profile,
+  notifications,
 }
 
 class NavigationRequest {

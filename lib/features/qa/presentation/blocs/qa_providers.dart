@@ -56,23 +56,45 @@ class QAPairsNotifier extends StateNotifier<QAPairsState> {
   QAPairsNotifier(this._getQAPairs) : super(const QAPairsState());
 
   final GetQAPairs _getQAPairs;
+  String? _lecturerId;
   String? _topicId;
   String? _documentId;
   int _page = 1;
   final int _pageSize = 10;
 
-  Future<void> fetch({
-    required String topicId,
-    String? documentId,
-    int? page,
-  }) async {
+  void configure({String? lecturerId}) {
+    _lecturerId = lecturerId;
+  }
+
+  Future<void> fetch({String? topicId, String? documentId, int? page}) async {
+    if (_lecturerId == null) {
+      state = state.copyWith(
+        loading: false,
+        error: 'Không thể xác định giảng viên hiện tại.',
+      );
+      return;
+    }
+
+    final previousTopic = _topicId;
+    final previousDocument = _documentId;
+
+    final filtersChanged =
+        previousTopic != topicId || previousDocument != documentId;
+
+    if (filtersChanged && page == null) {
+      _page = 1;
+    }
+
     _topicId = topicId;
     _documentId = documentId;
+    final targetPage = page ?? _page;
+    _page = targetPage;
     state = state.copyWith(loading: true, error: null);
     final res = await _getQAPairs(
+      lecturerId: _lecturerId!,
       topicId: topicId,
       documentId: documentId,
-      page: page ?? _page,
+      page: targetPage,
       pageSize: _pageSize,
     );
     state = res.fold(
@@ -85,9 +107,11 @@ class QAPairsNotifier extends StateNotifier<QAPairsState> {
   }
 
   Future<void> refresh() async {
-    if (_topicId != null) {
-      await fetch(topicId: _topicId!, documentId: _documentId);
-    }
+    await fetch(topicId: _topicId, documentId: _documentId, page: _page);
+  }
+
+  Future<void> goToPage(int page) async {
+    await fetch(topicId: _topicId, documentId: _documentId, page: page);
   }
 }
 

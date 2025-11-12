@@ -92,7 +92,7 @@ class _DetailContent extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(24),
                 gradient: headerGradient,
-                border: Border.all(color: Colors.black.withOpacity(.05)),
+                border: Border.all(color: const Color(0x14000000)),
               ),
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
               child: Column(
@@ -246,12 +246,12 @@ class _InfoSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.black.withOpacity(.05)),
-        boxShadow: [
+        border: Border.all(color: const Color(0x14000000)),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(.04),
+            color: Color(0x0A000000),
             blurRadius: 18,
-            offset: const Offset(0, 10),
+            offset: Offset(0, 10),
           ),
         ],
       ),

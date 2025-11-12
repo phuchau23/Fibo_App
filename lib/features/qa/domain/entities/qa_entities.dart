@@ -1,7 +1,7 @@
 // Following project rules:
 class QAPairEntity {
   final String id;
-  final String topicId;
+  final String? topicId;
   final String? documentId;
   final String createdById;
   final String? verifiedById;
@@ -13,7 +13,7 @@ class QAPairEntity {
 
   const QAPairEntity({
     required this.id,
-    required this.topicId,
+    this.topicId,
     this.documentId,
     required this.createdById,
     this.verifiedById,

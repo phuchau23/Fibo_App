@@ -9,6 +9,7 @@ class QaFailure {
 
 abstract class QaRepository {
   Future<Either<QaFailure, QAPagedEntity>> getQAPairs({
+    required String lecturerId,
     String? topicId,
     String? documentId,
     int page,
@@ -18,7 +19,7 @@ abstract class QaRepository {
   Future<Either<QaFailure, QAPairEntity>> getQAPairById(String id);
 
   Future<Either<QaFailure, Unit>> createQAPair({
-    required String topicId,
+    String? topicId,
     String? documentId,
     required String questionText,
     required String answerText,

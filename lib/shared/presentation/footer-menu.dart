@@ -7,6 +7,7 @@ import 'package:swp_app/features/course/presentation/pages/course_page.dart';
 import 'package:swp_app/shared/presentation/pages/home_page.dart';
 import 'package:swp_app/shared/presentation/pages/profile_page.dart';
 import 'package:swp_app/shared/presentation/providers/navigation_provider.dart';
+import 'package:swp_app/features/notification/presentation/pages/notification_list_page.dart';
 
 class FooterMenu extends ConsumerStatefulWidget {
   const FooterMenu({super.key});
@@ -22,6 +23,14 @@ class _FooterMenuState extends ConsumerState<FooterMenu> {
   int _coursesSessionId = 0;
 
   void _handleNavigationRequest(NavigationRequest request) {
+    if (request.target == NavigationTarget.notifications) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const NotificationListPage()),
+        );
+      });
+      return;
+    }
     setState(() {
       switch (request.target) {
         case NavigationTarget.home:
@@ -42,11 +51,12 @@ class _FooterMenuState extends ConsumerState<FooterMenu> {
           _courseVersion++;
           _coursesSessionId++;
           myCurrentIndex = 3;
-          // Store initial tab index for CoursePage
           _initialCourseTabIndex = 2; // Feedback tab is index 2
           break;
         case NavigationTarget.profile:
           myCurrentIndex = 4;
+          break;
+        case NavigationTarget.notifications:
           break;
       }
     });

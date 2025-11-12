@@ -18,4 +18,12 @@ abstract class NotificationRepository {
   Future<Either<NotificationFailure, NotificationEntity>> getNotificationById(
     String id,
   );
+  Future<Either<NotificationFailure, Unit>> markNotificationRead({
+    required String lecturerId,
+    required String notificationId,
+    bool isRead,
+  });
+  Future<Either<NotificationFailure, Unit>> markAllNotificationsRead(
+    String lecturerId,
+  );
 }

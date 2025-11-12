@@ -55,14 +55,18 @@ class UpdateDocument {
   UpdateDocument(this._repo);
   Future<Either<DocFailure, Unit>> call({
     required String id,
-    String? title,
-    int? version,
-    String? status,
+    required String topicId,
+    required String documentTypeId,
+    required String title,
+    required int version,
+    MultipartFile? file,
   }) => _repo.updateDocument(
     id: id,
+    topicId: topicId,
+    documentTypeId: documentTypeId,
     title: title,
     version: version,
-    status: status,
+    file: file,
   );
 }
 
@@ -70,6 +74,19 @@ class DeleteDocument {
   final DocumentRepository _repo;
   DeleteDocument(this._repo);
   Future<Either<DocFailure, Unit>> call(String id) => _repo.deleteDocument(id);
+}
+
+class PublishDocument {
+  final DocumentRepository _repo;
+  PublishDocument(this._repo);
+  Future<Either<DocFailure, Unit>> call(String id) => _repo.publishDocument(id);
+}
+
+class UnpublishDocument {
+  final DocumentRepository _repo;
+  UnpublishDocument(this._repo);
+  Future<Either<DocFailure, Unit>> call(String id) =>
+      _repo.unpublishDocument(id);
 }
 
 class GetDocumentById {

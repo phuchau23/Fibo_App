@@ -8,12 +8,14 @@ class GetQAPairs {
   GetQAPairs(this._repo);
 
   Future<Either<QaFailure, QAPagedEntity>> call({
+    required String lecturerId,
     String? topicId,
     String? documentId,
     int page = 1,
     int pageSize = 10,
   }) {
     return _repo.getQAPairs(
+      lecturerId: lecturerId,
       topicId: topicId,
       documentId: documentId,
       page: page,
@@ -34,7 +36,7 @@ class CreateQAPair {
   CreateQAPair(this._repo);
 
   Future<Either<QaFailure, Unit>> call({
-    required String topicId,
+    String? topicId,
     String? documentId,
     required String questionText,
     required String answerText,

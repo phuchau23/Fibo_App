@@ -25,6 +25,7 @@ class _CoursePageState extends State<CoursePage> with TickerProviderStateMixin {
   String? _qaInitialTopicId;
   String? _qaInitialTopicName;
   String? _qaInitialAnswerId;
+  String? _qaInitialAnswerContent;
 
   @override
   void initState() {
@@ -52,6 +53,7 @@ class _CoursePageState extends State<CoursePage> with TickerProviderStateMixin {
       _qaInitialTopicId = null;
       _qaInitialTopicName = null;
       _qaInitialAnswerId = null;
+      _qaInitialAnswerContent = null;
     }
   }
 
@@ -70,6 +72,7 @@ class _CoursePageState extends State<CoursePage> with TickerProviderStateMixin {
           _qaInitialTopicId = request.topicId;
           _qaInitialTopicName = request.topicName;
           _qaInitialAnswerId = request.answerId;
+          _qaInitialAnswerContent = request.answerContent;
           _qaKey = ValueKey(widget.sessionId + 1);
           _tabController.index = 1;
         });
@@ -143,6 +146,7 @@ class _CoursePageState extends State<CoursePage> with TickerProviderStateMixin {
                             initialTopicId: _qaInitialTopicId,
                             initialTopicName: _qaInitialTopicName,
                             initialAnswerId: _qaInitialAnswerId,
+                            initialAnswerContent: _qaInitialAnswerContent,
                           ),
                           FeedbackTab(
                             key: _feedbackKey,
@@ -172,7 +176,7 @@ class _SegmentedTabBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final bg = Theme.of(
       context,
-    ).colorScheme.surfaceContainerHighest.withOpacity(.5);
+    ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5);
     final border = Border.all(color: Colors.black12, width: 0.5);
 
     return Container(
@@ -194,7 +198,7 @@ class _SegmentedTabBar extends StatelessWidget {
           border: border,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(.06),
+              color: const Color(0x0F000000),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -203,7 +207,7 @@ class _SegmentedTabBar extends StatelessWidget {
         labelColor: Colors.black,
         unselectedLabelColor: Theme.of(
           context,
-        ).colorScheme.onSurface.withOpacity(.6),
+        ).colorScheme.onSurface.withValues(alpha: 0.6),
         labelStyle: Theme.of(
           context,
         ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),

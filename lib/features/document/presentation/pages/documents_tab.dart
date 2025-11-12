@@ -53,9 +53,15 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab>
     if (!typesState.loading && typesState.items.isEmpty) {
       await ref.read(documentTypesNotifierProvider.notifier).fetch();
     }
-    final topicsState = ref.read(topicsNotifierProvider);
-    if (!topicsState.loading && topicsState.page == null) {
-      await ref.read(topicsNotifierProvider.notifier).fetch(page: 1);
+    final lecturerId = await ref.read(lecturerIdProvider.future);
+    if (lecturerId != null) {
+      final topicsState = ref.read(myTopicsNotifierProvider);
+      if (!topicsState.loading && topicsState.page == null) {
+        await ref
+            .read(myTopicsNotifierProvider.notifier)
+            .fetch(page: 1, lecturerId: lecturerId);
+        if (!mounted) return;
+      }
     }
     if (!mounted) return;
     setState(() {
@@ -74,16 +80,29 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab>
   }
 
   Future<void> _pickTopic() async {
-    final topicsState = ref.read(topicsNotifierProvider);
+    final lecturerId = await ref.read(lecturerIdProvider.future);
+    var topicsState = ref.read(myTopicsNotifierProvider);
+    if ((topicsState.page == null || topicsState.page!.items.isEmpty) &&
+        !topicsState.loading &&
+        lecturerId != null) {
+      await ref
+          .read(myTopicsNotifierProvider.notifier)
+          .fetch(page: 1, lecturerId: lecturerId);
+      if (!mounted) return;
+      topicsState = ref.read(myTopicsNotifierProvider);
+    }
+
     final topics = topicsState.page?.items ?? const <TopicEntity>[];
     if (topics.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Hiện chưa có Topic nào để chọn.')),
+        const SnackBar(content: Text('Bạn chưa phụ trách Topic nào.')),
       );
       return;
     }
 
-    final selected = await showModalBottomSheet<TopicEntity>(
+    if (!mounted) return;
+    final selected = await showModalBottomSheet<TopicEntity?>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -92,6 +111,7 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab>
     );
 
     if (selected != null) {
+      if (!mounted) return;
       setState(() {
         _selectedTopicId = selected.id;
         _selectedTopicName = selected.name;
@@ -153,7 +173,7 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab>
   Widget build(BuildContext context) {
     super.build(context);
     final docsState = ref.watch(documentsNotifierProvider);
-    final topicsState = ref.watch(topicsNotifierProvider);
+    final topicsState = ref.watch(myTopicsNotifierProvider);
 
     final docs = docsState.page?.items ?? const <DocumentEntity>[];
 
@@ -288,18 +308,18 @@ class _TopicSelectorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final border = Border.all(color: Colors.black.withOpacity(.08));
+    final border = Border.all(color: const Color(0x14000000));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: border,
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(.04),
+            color: Color(0x0A000000),
             blurRadius: 18,
-            offset: const Offset(0, 8),
+            offset: Offset(0, 8),
           ),
         ],
       ),
@@ -361,11 +381,11 @@ class _DocumentCard extends StatelessWidget {
             color: Colors.white,
             borderRadius: r16,
             border: Border.all(color: const Color(0xFFE4E7EC)),
-            boxShadow: [
+            boxShadow: const [
               BoxShadow(
-                color: Colors.black.withOpacity(.05),
+                color: Color(0x0D000000),
                 blurRadius: 16,
-                offset: const Offset(0, 8),
+                offset: Offset(0, 8),
               ),
             ],
           ),
@@ -420,7 +440,7 @@ class _DocumentCard extends StatelessWidget {
                       'Created at ${_fmt(document.createdAt)}',
                       style: GoogleFonts.manrope(
                         fontSize: 12,
-                        color: Colors.black.withOpacity(.45),
+                        color: const Color(0x73000000),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -472,6 +492,13 @@ class _Badge extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Text(
         text,
@@ -540,11 +567,11 @@ class _TopicPickerSheet extends StatelessWidget {
                             ? const Color(0xFFF97316)
                             : const Color(0xFFE4E7EC),
                       ),
-                      boxShadow: [
+                      boxShadow: const [
                         BoxShadow(
-                          color: Colors.black.withOpacity(.04),
+                          color: Color(0x0A000000),
                           blurRadius: 16,
-                          offset: const Offset(0, 8),
+                          offset: Offset(0, 8),
                         ),
                       ],
                     ),
@@ -767,7 +794,8 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _selectedTypeId,
+                key: ValueKey('upload-type-${_selectedTypeId ?? 'none'}'),
+                initialValue: _selectedTypeId,
                 items: types
                     .map(
                       (t) => DropdownMenuItem(value: t.id, child: Text(t.name)),
@@ -849,10 +877,13 @@ class _UpdateDocumentSheetState extends ConsumerState<UpdateDocumentSheet> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _titleCtrl;
   late TextEditingController _versionCtrl;
-  String _status = 'Draft';
-  bool _submitting = false;
-
-  static const _statusOptions = ['Draft', 'Active', 'Needreview'];
+  String? _selectedTopicId;
+  String? _selectedTypeId;
+  PlatformFile? _pickedFile;
+  bool _saving = false;
+  bool _optionsLoading = true;
+  String _currentStatus = 'Draft';
+  String? _statusAction;
 
   @override
   void initState() {
@@ -861,10 +892,12 @@ class _UpdateDocumentSheetState extends ConsumerState<UpdateDocumentSheet> {
     _versionCtrl = TextEditingController(
       text: widget.document.version.toString(),
     );
-    _status = widget.document.status;
-    if (!_statusOptions.contains(_status)) {
-      _status = _statusOptions.first;
-    }
+    _selectedTopicId = widget.document.topicId;
+    _selectedTypeId = widget.document.documentTypeId;
+    _currentStatus = widget.document.status;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadOptions();
+    });
   }
 
   @override
@@ -874,8 +907,46 @@ class _UpdateDocumentSheetState extends ConsumerState<UpdateDocumentSheet> {
     super.dispose();
   }
 
+  Future<void> _loadOptions() async {
+    setState(() => _optionsLoading = true);
+    final lecturerId = await ref.read(lecturerIdProvider.future);
+    if (lecturerId != null) {
+      await ref
+          .read(myTopicsNotifierProvider.notifier)
+          .fetch(lecturerId: lecturerId);
+    }
+    final typesState = ref.read(documentTypesNotifierProvider);
+    if (!typesState.loading && typesState.items.isEmpty) {
+      await ref.read(documentTypesNotifierProvider.notifier).fetch();
+    }
+    if (mounted) {
+      setState(() => _optionsLoading = false);
+    }
+  }
+
+  Future<void> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles(withData: false);
+    if (result != null && result.files.isNotEmpty) {
+      setState(() {
+        _pickedFile = result.files.first;
+      });
+    }
+  }
+
   Future<void> _submit() async {
     if (_formKey.currentState?.validate() != true) return;
+    if (_selectedTopicId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Hãy chọn Topic.')));
+      return;
+    }
+    if (_selectedTypeId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Hãy chọn Document Type.')));
+      return;
+    }
     final version = int.tryParse(_versionCtrl.text.trim());
     if (version == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -884,14 +955,24 @@ class _UpdateDocumentSheetState extends ConsumerState<UpdateDocumentSheet> {
       return;
     }
 
-    setState(() => _submitting = true);
+    MultipartFile? multipart;
+    if (_pickedFile?.path != null) {
+      multipart = await MultipartFile.fromFile(
+        _pickedFile!.path!,
+        filename: _pickedFile!.name,
+      );
+    }
+
+    setState(() => _saving = true);
     final result = await ref.read(updateDocumentProvider)(
       id: widget.document.id,
+      topicId: _selectedTopicId!,
+      documentTypeId: _selectedTypeId!,
       title: _titleCtrl.text.trim(),
       version: version,
-      status: _status,
+      file: multipart,
     );
-    setState(() => _submitting = false);
+    setState(() => _saving = false);
     result.fold(
       (l) => ScaffoldMessenger.of(
         context,
@@ -900,8 +981,73 @@ class _UpdateDocumentSheetState extends ConsumerState<UpdateDocumentSheet> {
     );
   }
 
+  Future<void> _publish() async {
+    setState(() => _statusAction = 'publish');
+    final res = await ref.read(publishDocumentProvider)(widget.document.id);
+    setState(() => _statusAction = null);
+    res.fold(
+      (l) => ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.message))),
+      (r) async {
+        setState(() => _currentStatus = 'Active');
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Đã xuất bản tài liệu.')));
+        await ref.read(documentsNotifierProvider.notifier).refresh();
+      },
+    );
+  }
+
+  Future<void> _unpublish() async {
+    setState(() => _statusAction = 'unpublish');
+    final res = await ref.read(unpublishDocumentProvider)(widget.document.id);
+    setState(() => _statusAction = null);
+    res.fold(
+      (l) => ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.message))),
+      (r) async {
+        setState(() => _currentStatus = 'Draft');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã chuyển tài liệu về trạng thái Draft.'),
+          ),
+        );
+        await ref.read(documentsNotifierProvider.notifier).refresh();
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final topicState = ref.watch(myTopicsNotifierProvider);
+    final typeState = ref.watch(documentTypesNotifierProvider);
+    final topics = [...(topicState.page?.items ?? const <TopicEntity>[])];
+    if (_selectedTopicId != null &&
+        topics.every((t) => t.id != _selectedTopicId)) {
+      topics.add(
+        TopicEntity(
+          id: _selectedTopicId!,
+          name: 'Topic hiện tại',
+          status: 'Active',
+          createdAt: DateTime.now(),
+          description: null,
+        ),
+      );
+    }
+    final types = [...typeState.items];
+    if (_selectedTypeId != null &&
+        types.every((t) => t.id != _selectedTypeId)) {
+      types.add(
+        DocumentTypeEntity(
+          id: _selectedTypeId!,
+          name: 'Document type hiện tại',
+          status: 'Active',
+          createdAt: DateTime.now(),
+        ),
+      );
+    }
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -937,6 +1083,44 @@ class _UpdateDocumentSheetState extends ConsumerState<UpdateDocumentSheet> {
                 ),
               ),
               const SizedBox(height: 12),
+              if (_optionsLoading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              if (!_optionsLoading) ...[
+                DropdownButtonFormField<String>(
+                  key: ValueKey('update-topic-${_selectedTopicId ?? 'none'}'),
+                  initialValue: _selectedTopicId,
+                  decoration: const InputDecoration(labelText: 'Topic'),
+                  items: topics
+                      .map(
+                        (topic) => DropdownMenuItem(
+                          value: topic.id,
+                          child: Text(topic.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setState(() => _selectedTopicId = value),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  key: ValueKey('update-type-${_selectedTypeId ?? 'none'}'),
+                  initialValue: _selectedTypeId,
+                  decoration: const InputDecoration(labelText: 'Document Type'),
+                  items: types
+                      .map(
+                        (type) => DropdownMenuItem(
+                          value: type.id,
+                          child: Text(type.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) => setState(() => _selectedTypeId = value),
+                ),
+                const SizedBox(height: 16),
+              ],
               TextFormField(
                 controller: _titleCtrl,
                 decoration: const InputDecoration(labelText: 'Title'),
@@ -954,21 +1138,74 @@ class _UpdateDocumentSheetState extends ConsumerState<UpdateDocumentSheet> {
                     : null,
               ),
               const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _status,
-                decoration: const InputDecoration(labelText: 'Status'),
-                items: _statusOptions
-                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                    .toList(),
-                onChanged: (value) {
-                  if (value != null) setState(() => _status = value);
-                },
+              OutlinedButton.icon(
+                onPressed: _pickFile,
+                icon: const Icon(Icons.attach_file),
+                label: Text(_pickedFile?.name ?? 'Chọn file mới (tùy chọn)'),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Nếu không chọn file mới, hệ thống sẽ giữ nguyên file hiện tại.',
+                style: GoogleFonts.manrope(fontSize: 12, color: Colors.black54),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  _StatusChip(status: _currentStatus),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Trạng thái hiện tại',
+                    style: GoogleFonts.manrope(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF475467),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed:
+                          (_statusAction != null ||
+                              _currentStatus.toLowerCase() == 'active')
+                          ? null
+                          : _publish,
+                      child: _statusAction == 'publish'
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Xuất bản'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed:
+                          (_statusAction != null ||
+                              _currentStatus.toLowerCase() == 'draft')
+                          ? null
+                          : _unpublish,
+                      child: _statusAction == 'unpublish'
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Hủy xuất bản'),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _submitting ? null : _submit,
+                  onPressed: _saving ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFF97316),
                     foregroundColor: Colors.white,
@@ -978,7 +1215,7 @@ class _UpdateDocumentSheetState extends ConsumerState<UpdateDocumentSheet> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: _submitting
+                  child: _saving
                       ? const SizedBox(
                           width: 18,
                           height: 18,
@@ -992,6 +1229,45 @@ class _UpdateDocumentSheetState extends ConsumerState<UpdateDocumentSheet> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  final String status;
+  const _StatusChip({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    Color bg;
+    Color fg;
+    switch (status.toLowerCase()) {
+      case 'active':
+        bg = const Color(0xFFEFF4FF);
+        fg = const Color(0xFF2563EB);
+        break;
+      case 'needreview':
+        bg = const Color(0xFFFFF7E6);
+        fg = const Color(0xFFF97316);
+        break;
+      default:
+        bg = const Color(0xFFF4F4F5);
+        fg = const Color(0xFF475467);
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        status,
+        style: GoogleFonts.manrope(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: fg,
         ),
       ),
     );

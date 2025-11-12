@@ -8,13 +8,14 @@ class QARemoteDataSource {
   QARemoteDataSource(this._client);
 
   Future<PagedQAPairsResponse> getQAPairs({
+    required String lecturerId,
     String? topicId,
     String? documentId,
     int page = 1,
     int pageSize = 10,
   }) async {
     final resp = await _client.get<Map<String, dynamic>>(
-      '/course/api/qa-pairs',
+      '/course/api/qa-pairs/lecturer/$lecturerId',
       queryParameters: {
         if (topicId != null) 'topicId': topicId,
         if (documentId != null) 'documentId': documentId,
@@ -33,16 +34,18 @@ class QARemoteDataSource {
   }
 
   Future<void> createQAPair({
-    required String topicId,
+    String? topicId,
     String? documentId,
     required String questionText,
     required String answerText,
   }) async {
     final form = FormData.fromMap({
-      'TopicId': topicId,
+      if (topicId != null) 'TopicId': topicId,
       if (documentId != null) 'DocumentId': documentId,
       'QuestionText': questionText,
       'AnswerText': answerText,
+      'AutoEmbed': true,
+      'AutoLoadCache': true,
     });
     await _client.post(
       '/course/api/qa-pairs',

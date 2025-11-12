@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:swp_app/features/feedback/presentation/blocs/feedback_providers.dart';
+import 'package:swp_app/features/feedback/presentation/pages/feedback_tab.dart';
 import 'package:swp_app/features/notification/domain/entities/notification_entities.dart';
 import 'package:swp_app/features/notification/presentation/blocs/notification_providers.dart';
+import 'package:swp_app/features/notification/presentation/models/notification_navigation.dart';
+import 'package:swp_app/features/notification/presentation/pages/notification_detail_sheet.dart';
 import 'package:swp_app/features/topic/presentation/blocs/topics_providers.dart';
 
 class NotificationListPage extends ConsumerStatefulWidget {
@@ -21,6 +25,17 @@ class _NotificationListPageState extends ConsumerState<NotificationListPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _bootstrap();
     });
+    ref.listen<NotificationNavigationAction?>(
+      pendingNotificationActionProvider,
+      (previous, next) {
+        if (next != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            await _handleExternalNavigation(next);
+            ref.read(pendingNotificationActionProvider.notifier).state = null;
+          });
+        }
+      },
+    );
   }
 
   Future<void> _bootstrap() async {
@@ -109,14 +124,9 @@ class _NotificationListPageState extends ConsumerState<NotificationListPage> {
         actions: [
           if (state.items.any((n) => n.isNew))
             TextButton(
-              onPressed: () {
-                // Mark all as read
-                for (final notification in state.items.where((n) => n.isNew)) {
-                  ref
-                      .read(notificationNotifierProvider.notifier)
-                      .markAsRead(notification.id);
-                }
-              },
+              onPressed: () async => ref
+                  .read(notificationNotifierProvider.notifier)
+                  .markAllAsRead(),
               child: Text(
                 'Đánh dấu đã đọc',
                 style: GoogleFonts.manrope(
@@ -169,17 +179,95 @@ class _NotificationListPageState extends ConsumerState<NotificationListPage> {
                   final notification = state.items[index];
                   return _NotificationCard(
                     notification: notification,
-                    onTap: () {
-                      ref
-                          .read(notificationNotifierProvider.notifier)
-                          .markAsRead(notification.id);
-                    },
+                    onTap: () => _onNotificationTap(notification),
                     timeAgo: _formatTimeAgo(notification.createdAt),
                   );
                 },
               ),
       ),
     );
+  }
+
+  Future<void> _onNotificationTap(NotificationEntity notification) async {
+    await ref
+        .read(notificationNotifierProvider.notifier)
+        .markAsRead(notification.id);
+    if (!mounted) return;
+    final feedbackId = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) =>
+          NotificationDetailSheet(initialNotification: notification),
+    );
+    if (feedbackId != null) {
+      await _openFeedbackDetail(feedbackId);
+    }
+  }
+
+  Future<void> _handleExternalNavigation(
+    NotificationNavigationAction action,
+  ) async {
+    final notifier = ref.read(notificationNotifierProvider.notifier);
+    await notifier.markAsRead(action.notificationId);
+
+    NotificationEntity? target;
+    final currentItems = ref.read(notificationNotifierProvider).items;
+    for (final n in currentItems) {
+      if (n.id == action.notificationId) {
+        target = n;
+        break;
+      }
+    }
+    if (target == null) {
+      try {
+        target = await ref.read(
+          notificationDetailProvider(action.notificationId).future,
+        );
+      } catch (_) {
+        target = null;
+      }
+    }
+
+    if (!mounted) return;
+    if (target == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không tìm thấy thông báo.')),
+      );
+      return;
+    }
+
+    final feedbackId = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => NotificationDetailSheet(initialNotification: target!),
+    );
+
+    final resolvedFeedbackId = action.feedbackId ?? feedbackId;
+    if (resolvedFeedbackId != null) {
+      await _openFeedbackDetail(resolvedFeedbackId);
+    }
+  }
+
+  Future<void> _openFeedbackDetail(String feedbackId) async {
+    try {
+      final feedback = await ref.read(
+        feedbackDetailProvider(feedbackId).future,
+      );
+      if (!mounted) return;
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => FeedbackDetailSheet(feedback: feedback),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không tải được thông tin feedback.')),
+      );
+    }
   }
 }
 
@@ -214,11 +302,11 @@ class _NotificationCard extends StatelessWidget {
                     : Colors.grey[300]!,
                 width: notification.isNew ? 1.5 : 1,
               ),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
-                  color: Colors.black.withOpacity(.05),
+                  color: Color(0x0D000000),
                   blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  offset: Offset(0, 2),
                 ),
               ],
             ),
@@ -230,7 +318,7 @@ class _NotificationCard extends StatelessWidget {
                   height: 48,
                   decoration: BoxDecoration(
                     color: notification.isNew
-                        ? const Color(0xFF2563EB).withOpacity(.1)
+                        ? const Color(0x1A2563EB)
                         : Colors.grey[200],
                     shape: BoxShape.circle,
                   ),

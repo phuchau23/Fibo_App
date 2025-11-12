@@ -33,6 +33,12 @@ class ApiEndpoints {
       '/course/api/notifications/lecturer/$lecturerId';
   static const String notifications = '/course/api/notifications';
   static String notificationById(String id) => '/course/api/notifications/$id';
+  static String notificationMarkRead(
+    String lecturerId,
+    String notificationId,
+  ) => '/course/api/notifications/lecturer/$lecturerId/$notificationId/read';
+  static String notificationMarkAllRead(String lecturerId) =>
+      '/course/api/notifications/lecturer/$lecturerId/read-all';
 
   static const String multipartContentType = 'multipart/form-data';
 }
