@@ -10,8 +10,6 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:swp_app/core/services/fcm_service.dart';
 import 'package:swp_app/core/theme/shadcn_theme.dart';
 import 'package:swp_app/firebase_options.dart';
-import 'package:swp_app/features/profile/presentation/pages/change_password_page.dart';
-import 'package:swp_app/features/profile/presentation/pages/edit_profile_page.dart';
 import 'package:swp_app/shared/presentation/footer-menu.dart';
 import 'package:swp_app/shared/presentation/pages/home_page.dart';
 import 'package:swp_app/features/auth/presentation/pages/login_page.dart';
@@ -20,16 +18,12 @@ import 'package:swp_app/features/notification/presentation/models/notification_n
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   await initializeDateFormatting('vi_VN', null);
   runApp(const ProviderScope(child: AppRoot()));
@@ -57,9 +51,7 @@ final _router = GoRouter(
         final colors = ShadTheme.of(context).colorScheme;
         return Scaffold(
           backgroundColor: colors.background,
-          body: SafeArea(
-            child: child,
-          ),
+          body: SafeArea(child: child),
           bottomNavigationBar: const FooterMenu(),
         );
       },
@@ -90,24 +82,25 @@ class _AppRootState extends ConsumerState<AppRoot> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(fcmServiceProvider).initialize();
     });
-    ref.listen<InAppNotificationPayload?>(
-      inAppNotificationProvider,
-      (previous, next) {
-        if (next != null && !_showingNotification) {
-          _showingNotification = true;
-          Future.microtask(() async {
-            await _showInAppNotification(next);
-            _showingNotification = false;
-            ref.read(inAppNotificationProvider.notifier).state = null;
-          });
-        }
-      },
-    );
+    ref.listen<InAppNotificationPayload?>(inAppNotificationProvider, (
+      previous,
+      next,
+    ) {
+      if (next != null && !_showingNotification) {
+        _showingNotification = true;
+        Future.microtask(() async {
+          await _showInAppNotification(next);
+          _showingNotification = false;
+          ref.read(inAppNotificationProvider.notifier).state = null;
+        });
+      }
+    });
   }
 
   Future<void> _showInAppNotification(InAppNotificationPayload payload) async {
     if (!mounted) return;
-    final shouldNavigate = await showModalBottomSheet<bool>(
+    final shouldNavigate =
+        await showModalBottomSheet<bool>(
           context: context,
           backgroundColor: Colors.transparent,
           builder: (context) {
@@ -115,7 +108,10 @@ class _AppRootState extends ConsumerState<AppRoot> {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 18,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(24),

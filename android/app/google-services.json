@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "447224950285",
+    "project_id": "fibochatplatform",
+    "storage_bucket": "fibochatplatform.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:447224950285:android:42977e9388047f2853af44",
+        "android_client_info": {
+          "package_name": "com.example.swp_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "447224950285-o5c77thl9c3rin84kstf2i0r8c99hpbp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAL9XMcaMzEp03daQRyJVk1vu6xSazd8xk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "447224950285-o5c77thl9c3rin84kstf2i0r8c99hpbp.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

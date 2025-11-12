@@ -31,6 +31,11 @@ android {
         versionName = flutter.versionName
     }
 
+    dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
+    implementation("com.google.firebase:firebase-analytics")
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
