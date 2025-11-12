@@ -15,6 +15,10 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
   final confirmCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
+  bool _isOldPasswordVisible = false;
+  bool _isNewPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
+
   @override
   void dispose() {
     oldCtrl.dispose();
@@ -25,32 +29,56 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    // Get the current context at the start of the method
+    final currentContext = context;
+
     if (newCtrl.text != confirmCtrl.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Confirm password not match')),
+      if (!mounted) return;
+      ScaffoldMessenger.of(currentContext).showSnackBar(
+        const SnackBar(content: Text('Xác nhận mật khẩu không khớp')),
       );
       return;
     }
 
-    await ref
-        .read(changePasswordControllerProvider.notifier)
-        .submit(
-          oldPassword: oldCtrl.text,
-          newPassword: newCtrl.text,
-          confirmNewPassword: confirmCtrl.text,
-        );
+    try {
+      await ref
+          .read(changePasswordControllerProvider.notifier)
+          .submit(
+            oldPassword: oldCtrl.text,
+            newPassword: newCtrl.text,
+            confirmNewPassword: confirmCtrl.text,
+          );
 
-    if (!mounted) return;
-    final st = ref.read(changePasswordControllerProvider);
-    if (st.hasError) {
+      if (!mounted) return;
+      final st = ref.read(changePasswordControllerProvider);
+
+      if (st.hasError) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          currentContext,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: ${st.error}')));
+      } else {
+        if (!mounted) return;
+        // Show success message
+        ScaffoldMessenger.of(currentContext).showSnackBar(
+          const SnackBar(
+            content: Text('Cập nhật mật khẩu thành công'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        // Wait for the snackbar to show before navigating back
+        await Future.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
+        // Pop to root and then to profile
+        Navigator.of(currentContext).popUntil((route) => route.isFirst);
+        Navigator.of(currentContext).pushReplacementNamed('/profile');
+      }
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed: ${st.error}')));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password changed successfully')),
-      );
-      Navigator.of(context).pop();
+        currentContext,
+      ).showSnackBar(SnackBar(content: Text('Đã xảy ra lỗi: $e')));
     }
   }
 
@@ -59,13 +87,42 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
     final loading = ref.watch(changePasswordControllerProvider).isLoading;
     const bg = Color(0xFFF9FAFB);
 
+    // Build password field with visibility toggle
+    Widget _buildPasswordField({
+      required TextEditingController controller,
+      required String labelText,
+      required bool isVisible,
+      required VoidCallback onToggle,
+      String? Function(String?)? validator,
+    }) {
+      return TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: labelText,
+          suffixIcon: IconButton(
+            icon: Icon(
+              isVisible ? Icons.visibility_off : Icons.visibility,
+              color: Colors.grey,
+            ),
+            onPressed: onToggle,
+          ),
+        ),
+        obscureText: !isVisible,
+        validator: validator,
+      );
+    }
+
     return Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
-        title: const Text('Change Password'),
+        title: const Text('Đổi mật khẩu'),
         elevation: 0,
         backgroundColor: bg,
         foregroundColor: Colors.black87,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -77,34 +134,41 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
               key: _formKey,
               child: Column(
                 children: [
-                  TextFormField(
+                  _buildPasswordField(
                     controller: oldCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Old Password',
+                    labelText: 'Mật khẩu cũ',
+                    isVisible: _isOldPasswordVisible,
+                    onToggle: () => setState(
+                      () => _isOldPasswordVisible = !_isOldPasswordVisible,
                     ),
-                    obscureText: true,
                     validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Required' : null,
+                        (v == null || v.isEmpty) ? 'Bắt buộc' : null,
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
+                  _buildPasswordField(
                     controller: newCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'New Password',
+                    labelText: 'Mật khẩu mới',
+                    isVisible: _isNewPasswordVisible,
+                    onToggle: () => setState(
+                      () => _isNewPasswordVisible = !_isNewPasswordVisible,
                     ),
-                    obscureText: true,
                     validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Required' : null,
+                        (v == null || v.isEmpty) ? 'Bắt buộc' : null,
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
+                  _buildPasswordField(
                     controller: confirmCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Confirm New Password',
+                    labelText: 'Xác nhận mật khẩu mới',
+                    isVisible: _isConfirmPasswordVisible,
+                    onToggle: () => setState(
+                      () => _isConfirmPasswordVisible =
+                          !_isConfirmPasswordVisible,
                     ),
-                    obscureText: true,
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Required' : null,
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Bắt buộc';
+                      if (v != newCtrl.text) return 'Mật khẩu không khớp';
+                      return null;
+                    },
                   ),
                 ],
               ),
