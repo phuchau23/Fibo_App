@@ -18,7 +18,7 @@ class FcmService {
     if (_initialized) return;
     _initialized = true;
 
-    // Setup listeners first (don't request permission yet)
+    // Setup listeners first
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
 
@@ -27,8 +27,10 @@ class FcmService {
       _handleMessageOpenedApp(initialMessage);
     }
 
-    // Try to get token (will work if permission already granted)
-    // Permission will be requested explicitly after user login
+    // Request permission ngay khi app khởi động (best practice)
+    await _requestPermission();
+
+    // Sync token sau khi có permission
     await _syncToken();
   }
 

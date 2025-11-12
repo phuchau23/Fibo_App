@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
-import 'package:swp_app/core/services/fcm_service.dart';
 import 'package:swp_app/features/auth/data/models/auth_payloads.dart';
 import 'package:swp_app/features/auth/presentation/blocs/auth_provider.dart';
 import 'package:swp_app/features/auth/presentation/widgets/email_input.dart';
@@ -53,18 +52,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           description: Text(err),
         ),
       ),
-      (_) async {
+      (_) {
         ShadToaster.of(
           context,
         ).show(const ShadToast(title: Text('Đăng nhập thành công')));
-
-        // Request notification permission after successful login
-        final fcmService = ref.read(fcmServiceProvider);
-        await fcmService.requestNotificationPermission();
-
-        if (mounted) {
-          context.go('/');
-        }
+        context.go('/');
       },
     );
   }
