@@ -11,6 +11,7 @@ import 'package:swp_app/features/auth/data/models/login_credentials.dart';
 import 'package:swp_app/features/auth/data/models/auth_payloads.dart';
 import 'package:swp_app/features/auth/data/repository/auth_repository_impl.dart';
 import 'package:swp_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:swp_app/features/profile/presentation/blocs/profile_providers.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient(ref));
 
@@ -42,6 +43,10 @@ class AuthController extends AutoDisposeAsyncNotifier<void> {
 
     return await either.fold((err) async => Left(err), (auth) async {
       await session.saveFromToken(auth.accessToken);
+      
+      // Invalidate profile provider to force refresh
+      ref.invalidate(profileNotifierProvider);
+      
       return Right(auth);
     });
   }
@@ -102,8 +107,15 @@ class AuthController extends AutoDisposeAsyncNotifier<void> {
       // Clear session data first
       await session.clear();
       
+      // Clear any cached data in the API client
+      _client.dio.interceptors.clear();
+      
       // Reset state to initial
       state = const AsyncData(null);
+      
+      // Force rebuild the widget tree to ensure all providers are recreated
+      ref.invalidate(apiClientProvider);
+      
       return true;
     } catch (e, stackTrace) {
       // Log the error
