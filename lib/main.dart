@@ -18,12 +18,20 @@ import 'package:swp_app/features/notification/presentation/models/notification_n
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   await initializeDateFormatting('vi_VN', null);
   runApp(const ProviderScope(child: AppRoot()));
@@ -82,6 +90,11 @@ class _AppRootState extends ConsumerState<AppRoot> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(fcmServiceProvider).initialize();
     });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Listen to in-app notifications
     ref.listen<InAppNotificationPayload?>(inAppNotificationProvider, (
       previous,
       next,
@@ -95,6 +108,16 @@ class _AppRootState extends ConsumerState<AppRoot> {
         });
       }
     });
+
+    return ShadApp.router(
+      title: 'fibo_app',
+      themeMode: ThemeMode.light,
+      theme: FiboShadcnTheme.lightTheme,
+      darkTheme: FiboShadcnTheme.darkTheme,
+      routerConfig: _router,
+      builder: (context, child) =>
+          ShadToaster(child: child ?? const SizedBox.shrink()),
+    );
   }
 
   Future<void> _showInAppNotification(InAppNotificationPayload payload) async {
@@ -188,18 +211,5 @@ class _AppRootState extends ConsumerState<AppRoot> {
     if (shouldNavigate && payload.action != null) {
       ref.read(fcmServiceProvider).handleForegroundTap(payload.action!);
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ShadApp.router(
-      title: 'fibo_app',
-      themeMode: ThemeMode.light,
-      theme: FiboShadcnTheme.lightTheme,
-      darkTheme: FiboShadcnTheme.darkTheme,
-      routerConfig: _router,
-      builder: (context, child) =>
-          ShadToaster(child: child ?? const SizedBox.shrink()),
-    );
   }
 }

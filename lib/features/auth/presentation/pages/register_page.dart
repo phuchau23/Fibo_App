@@ -156,9 +156,12 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     width: double.infinity,
                     onPressed: async.isLoading ? null : _submit,
                     child: async.isLoading
-                        ? const ShadProgress(
-                            minHeight: 16,
-                            color: Colors.orange,
+                        ? const SizedBox(
+                            height: 16,
+                            child: ShadProgress(
+                              minHeight: 16,
+                              color: Colors.orange,
+                            ),
                           )
                         : const Text('Đăng ký'),
                   ),

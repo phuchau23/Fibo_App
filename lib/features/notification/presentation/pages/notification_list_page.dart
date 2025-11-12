@@ -25,17 +25,6 @@ class _NotificationListPageState extends ConsumerState<NotificationListPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _bootstrap();
     });
-    ref.listen<NotificationNavigationAction?>(
-      pendingNotificationActionProvider,
-      (previous, next) {
-        if (next != null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) async {
-            await _handleExternalNavigation(next);
-            ref.read(pendingNotificationActionProvider.notifier).state = null;
-          });
-        }
-      },
-    );
   }
 
   Future<void> _bootstrap() async {
@@ -72,7 +61,7 @@ class _NotificationListPageState extends ConsumerState<NotificationListPage> {
         }
       });
     } catch (e) {
-      print('Error connecting to SignalR: $e');
+      debugPrint('Error connecting to SignalR: $e');
     }
   }
 
@@ -100,6 +89,19 @@ class _NotificationListPageState extends ConsumerState<NotificationListPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(notificationNotifierProvider);
+
+    // Listen to pending notification actions (from FCM)
+    ref.listen<NotificationNavigationAction?>(
+      pendingNotificationActionProvider,
+      (previous, next) {
+        if (next != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            await _handleExternalNavigation(next);
+            ref.read(pendingNotificationActionProvider.notifier).state = null;
+          });
+        }
+      },
+    );
 
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 255, 231, 207),

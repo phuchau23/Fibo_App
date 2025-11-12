@@ -12,6 +12,7 @@ class FcmService {
   final Ref _ref;
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   bool _initialized = false;
+  bool _requestingPermission = false;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -30,16 +31,22 @@ class FcmService {
   }
 
   Future<void> _requestPermission() async {
-    final settings = await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      announcement: false,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
-    );
-    debugPrint('FCM permission status: ${settings.authorizationStatus}');
+    if (_requestingPermission) return;
+    _requestingPermission = true;
+    try {
+      final settings = await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        announcement: false,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+      );
+      debugPrint('FCM permission status: ${settings.authorizationStatus}');
+    } finally {
+      _requestingPermission = false;
+    }
   }
 
   Future<void> _syncToken() async {
