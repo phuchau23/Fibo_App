@@ -164,75 +164,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           const SizedBox(height: 18),
 
                           // divider "Or sign up with"
-                          Row(
-                            children: [
-                              const Expanded(child: ShadSeparator.horizontal()),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                ),
-                                child: Text(
-                                  'Or sign up with',
-                                  style: ShadTheme.of(context).textTheme.muted,
-                                ),
-                              ),
-                              const Expanded(child: ShadSeparator.horizontal()),
-                            ],
-                          ),
                           const SizedBox(height: 14),
-
-                          // Google + Apple buttons
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ShadButton.outline(
-                                  height: 48,
-                                  onPressed: () {},
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: const [
-                                      Icon(LucideIcons.octagon),
-                                      SizedBox(width: 8),
-                                      Text('Google'),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: ShadButton.outline(
-                                  height: 48,
-                                  onPressed: () {},
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: const [
-                                      Icon(LucideIcons.apple),
-                                      SizedBox(width: 8),
-                                      Text('Apple'),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          // terms
-
-                          // footer: đăng ký
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Chưa có tài khoản?',
-                                style: ShadTheme.of(context).textTheme.muted,
-                              ),
-                              ShadButton.link(
-                                onPressed: () => context.go('/register'),
-                                child: const Text('Đăng ký'),
-                              ),
-                            ],
-                          ),
                         ],
                       ),
                     ),
