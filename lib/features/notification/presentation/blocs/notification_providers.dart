@@ -35,6 +35,14 @@ final getNotificationByIdProvider = Provider<GetNotificationById>(
   (ref) => GetNotificationById(ref.watch(notificationRepositoryProvider)),
 );
 
+final markNotificationReadProvider = Provider<MarkNotificationRead>(
+  (ref) => MarkNotificationRead(ref.watch(notificationRepositoryProvider)),
+);
+
+final markAllNotificationsReadProvider = Provider<MarkAllNotificationsRead>(
+  (ref) => MarkAllNotificationsRead(ref.watch(notificationRepositoryProvider)),
+);
+
 final signalRServiceProvider = Provider<SignalRService>((ref) {
   final sessionService = ref.watch(sessionServiceProvider);
   final service = SignalRService(sessionService);
@@ -75,10 +83,15 @@ class NotificationState {
 }
 
 class NotificationNotifier extends StateNotifier<NotificationState> {
-  NotificationNotifier(this._getNotificationsByLecturer)
-    : super(const NotificationState());
+  NotificationNotifier(
+    this._getNotificationsByLecturer,
+    this._markNotificationRead,
+    this._markAllNotificationsRead,
+  ) : super(const NotificationState());
 
   final GetNotificationsByLecturer _getNotificationsByLecturer;
+  final MarkNotificationRead _markNotificationRead;
+  final MarkAllNotificationsRead _markAllNotificationsRead;
   int _page = 1;
   final int _pageSize = 20;
   String? _lecturerId;
@@ -118,26 +131,59 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
     state = state.copyWith(items: updatedItems, unreadCount: unreadCount);
   }
 
-  void markAsRead(String notificationId) {
+  Future<void> markAsRead(String notificationId) async {
+    if (_lecturerId == null) return;
+    final previousState = state;
     final updatedItems = state.items.map((n) {
       if (n.id == notificationId) {
-        return NotificationEntity(
-          id: n.id,
-          type: n.type,
-          title: n.title,
-          description: n.description,
-          icon: n.icon,
-          relatedEntityId: n.relatedEntityId,
-          relatedEntityType: n.relatedEntityType,
-          createdAt: n.createdAt,
-          isNew: false,
-          data: n.data,
-        );
+        return _cloneNotification(n, isNew: false);
       }
       return n;
     }).toList();
     final unreadCount = updatedItems.where((n) => n.isNew).length;
     state = state.copyWith(items: updatedItems, unreadCount: unreadCount);
+
+    final result = await _markNotificationRead(
+      lecturerId: _lecturerId!,
+      notificationId: notificationId,
+      isRead: true,
+    );
+
+    result.fold((l) {
+      state = previousState;
+    }, (_) {});
+  }
+
+  Future<void> markAllAsRead() async {
+    if (_lecturerId == null) return;
+    final previousState = state;
+    final updatedItems = state.items
+        .map((n) => _cloneNotification(n, isNew: false))
+        .toList();
+    state = state.copyWith(items: updatedItems, unreadCount: 0);
+
+    final result = await _markAllNotificationsRead(_lecturerId!);
+    result.fold((l) {
+      state = previousState;
+    }, (_) {});
+  }
+
+  NotificationEntity _cloneNotification(
+    NotificationEntity entity, {
+    bool? isNew,
+  }) {
+    return NotificationEntity(
+      id: entity.id,
+      type: entity.type,
+      title: entity.title,
+      description: entity.description,
+      icon: entity.icon,
+      relatedEntityId: entity.relatedEntityId,
+      relatedEntityType: entity.relatedEntityType,
+      createdAt: entity.createdAt,
+      isNew: isNew ?? entity.isNew,
+      data: entity.data,
+    );
   }
 }
 
@@ -145,6 +191,8 @@ final notificationNotifierProvider =
     StateNotifierProvider<NotificationNotifier, NotificationState>((ref) {
       return NotificationNotifier(
         ref.watch(getNotificationsByLecturerProvider),
+        ref.watch(markNotificationReadProvider),
+        ref.watch(markAllNotificationsReadProvider),
       );
     });
 

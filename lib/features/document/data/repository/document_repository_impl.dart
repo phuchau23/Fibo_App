@@ -140,17 +140,41 @@ class DocumentRepositoryImpl implements DocumentRepository {
   @override
   Future<Either<DocFailure, Unit>> updateDocument({
     required String id,
-    String? title,
-    int? version,
-    String? status,
+    required String topicId,
+    required String documentTypeId,
+    required String title,
+    required int version,
+    MultipartFile? file,
   }) async {
     try {
       await _remote.updateDocument(
         id: id,
+        topicId: topicId,
+        documentTypeId: documentTypeId,
         title: title,
         version: version,
-        status: status,
+        file: file,
       );
+      return const Right(unit);
+    } catch (e) {
+      return Left(DocFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DocFailure, Unit>> publishDocument(String id) async {
+    try {
+      await _remote.publishDocument(id);
+      return const Right(unit);
+    } catch (e) {
+      return Left(DocFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DocFailure, Unit>> unpublishDocument(String id) async {
+    try {
+      await _remote.unpublishDocument(id);
       return const Right(unit);
     } catch (e) {
       return Left(DocFailure(e.toString()));

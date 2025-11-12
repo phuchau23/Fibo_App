@@ -11,7 +11,7 @@ class QaRepositoryImpl implements QaRepository {
 
   @override
   Future<Either<QaFailure, Unit>> createQAPair({
-    required String topicId,
+    String? topicId,
     String? documentId,
     required String questionText,
     required String answerText,
@@ -51,6 +51,7 @@ class QaRepositoryImpl implements QaRepository {
 
   @override
   Future<Either<QaFailure, QAPagedEntity>> getQAPairs({
+    required String lecturerId,
     String? topicId,
     String? documentId,
     int page = 1,
@@ -58,6 +59,7 @@ class QaRepositoryImpl implements QaRepository {
   }) async {
     try {
       final res = await _remote.getQAPairs(
+        lecturerId: lecturerId,
         topicId: topicId,
         documentId: documentId,
         page: page,

@@ -13,12 +13,14 @@ class QaTab extends ConsumerStatefulWidget {
   final String? initialTopicId;
   final String? initialTopicName;
   final String? initialAnswerId;
+  final String? initialAnswerContent;
   const QaTab({
     super.key,
     required this.sessionId,
     this.initialTopicId,
     this.initialTopicName,
     this.initialAnswerId,
+    this.initialAnswerContent,
   });
 
   @override
@@ -27,15 +29,22 @@ class QaTab extends ConsumerStatefulWidget {
 
 class _QaTabState extends ConsumerState<QaTab>
     with AutomaticKeepAliveClientMixin {
+  String? _pendingAnswerId;
+  String? _pendingAnswerContent;
   String? _selectedTopicId;
   String? _selectedTopicName;
   String? _selectedDocumentId;
   String? _selectedDocumentName;
   bool _initialized = false;
 
+  bool get _hasFilters =>
+      (_selectedTopicId != null) || (_selectedDocumentId != null);
+
   @override
   void initState() {
     super.initState();
+    _pendingAnswerId = widget.initialAnswerId;
+    _pendingAnswerContent = widget.initialAnswerContent;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _ensureBasics();
     });
@@ -51,9 +60,28 @@ class _QaTabState extends ConsumerState<QaTab>
         _selectedDocumentId = null;
         _selectedDocumentName = null;
         _initialized = false;
+        _pendingAnswerId = widget.initialAnswerId;
+        _pendingAnswerContent = widget.initialAnswerContent;
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _ensureBasics();
+      });
+    } else if (oldWidget.initialTopicId != widget.initialTopicId ||
+        oldWidget.initialAnswerId != widget.initialAnswerId ||
+        oldWidget.initialAnswerContent != widget.initialAnswerContent) {
+      _pendingAnswerId = widget.initialAnswerId;
+      _pendingAnswerContent = widget.initialAnswerContent;
+      setState(() {
+        _selectedTopicId = widget.initialTopicId;
+        _selectedTopicName = widget.initialTopicName;
+        _selectedDocumentId = null;
+        _selectedDocumentName = null;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await ref
+            .read(qaPairsNotifierProvider.notifier)
+            .fetch(topicId: widget.initialTopicId);
+        await _maybeOpenInitialAnswer();
       });
     }
   }
@@ -63,43 +91,52 @@ class _QaTabState extends ConsumerState<QaTab>
     if (!topicsState.loading && topicsState.page == null) {
       await ref.read(topicsNotifierProvider.notifier).fetch(page: 1);
     }
+
+    final lecturerId = await ref.read(lecturerIdProvider.future);
     if (!mounted) return;
+
+    final notifier = ref.read(qaPairsNotifierProvider.notifier);
+    notifier.configure(lecturerId: lecturerId);
+
     setState(() {
       _initialized = true;
-      if (widget.initialTopicId != null && widget.initialTopicName != null) {
-        _selectedTopicId = widget.initialTopicId;
-        _selectedTopicName = widget.initialTopicName;
-        ref
-            .read(qaPairsNotifierProvider.notifier)
-            .fetch(topicId: widget.initialTopicId!);
-      } else {
-        _selectedTopicId = null;
-        _selectedTopicName = null;
-        _selectedDocumentId = null;
-        _selectedDocumentName = null;
-      }
+      _selectedTopicId = widget.initialTopicId;
+      _selectedTopicName = widget.initialTopicName;
+      _selectedDocumentId = null;
+      _selectedDocumentName = null;
     });
+    if (lecturerId != null) {
+      await notifier.fetch(topicId: widget.initialTopicId);
+      await _maybeOpenInitialAnswer();
+    }
   }
 
   Future<void> _pickTopic() async {
     final topicsState = ref.read(topicsNotifierProvider);
-    final selected = await showModalBottomSheet<TopicEntity>(
+    final selected = await showModalBottomSheet<TopicEntity?>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => _TopicPickerSheet(state: topicsState),
+      builder: (ctx) => _TopicPickerSheet(
+        state: topicsState,
+        currentTopicId: _selectedTopicId,
+      ),
     );
-    if (selected != null) {
-      setState(() {
-        _selectedTopicId = selected.id;
-        _selectedTopicName = selected.name;
-        _selectedDocumentId = null;
-        _selectedDocumentName = null;
-      });
-      await ref
-          .read(qaPairsNotifierProvider.notifier)
-          .fetch(topicId: selected.id);
+    if (!mounted) return;
+    if (selected == null && _selectedTopicId == null) {
+      return;
     }
+    setState(() {
+      _selectedTopicId = selected?.id;
+      _selectedTopicName = selected?.name;
+      _selectedDocumentId = null;
+      _selectedDocumentName = null;
+      _pendingAnswerId = null;
+      _pendingAnswerContent = null;
+    });
+    await ref
+        .read(qaPairsNotifierProvider.notifier)
+        .fetch(topicId: selected?.id);
   }
 
   Future<void> _pickDocument() async {
@@ -130,38 +167,136 @@ class _QaTabState extends ConsumerState<QaTab>
       setState(() {
         _selectedDocumentId = selected?.id;
         _selectedDocumentName = selected?.title;
+        _pendingAnswerId = null;
+        _pendingAnswerContent = null;
       });
       await ref
           .read(qaPairsNotifierProvider.notifier)
-          .fetch(topicId: _selectedTopicId!, documentId: selected?.id);
+          .fetch(topicId: _selectedTopicId, documentId: selected?.id);
     }
   }
 
   Future<void> _refresh() async {
-    if (_selectedTopicId != null) {
-      await ref.read(qaPairsNotifierProvider.notifier).refresh();
+    await ref.read(qaPairsNotifierProvider.notifier).refresh();
+  }
+
+  Future<void> _clearFilters() async {
+    if (!_hasFilters) return;
+    setState(() {
+      _selectedTopicId = null;
+      _selectedTopicName = null;
+      _selectedDocumentId = null;
+      _selectedDocumentName = null;
+      _pendingAnswerId = null;
+      _pendingAnswerContent = null;
+    });
+    await ref.read(qaPairsNotifierProvider.notifier).fetch();
+  }
+
+  Future<void> _removeTopicFilter() async {
+    if (_selectedTopicId == null) return;
+    setState(() {
+      _selectedTopicId = null;
+      _selectedTopicName = null;
+      _selectedDocumentId = null;
+      _selectedDocumentName = null;
+      _pendingAnswerId = null;
+      _pendingAnswerContent = null;
+    });
+    await ref.read(qaPairsNotifierProvider.notifier).fetch();
+  }
+
+  Future<void> _removeDocumentFilter() async {
+    if (_selectedDocumentId == null) return;
+    setState(() {
+      _selectedDocumentId = null;
+      _selectedDocumentName = null;
+      _pendingAnswerId = null;
+      _pendingAnswerContent = null;
+    });
+    await ref
+        .read(qaPairsNotifierProvider.notifier)
+        .fetch(topicId: _selectedTopicId);
+  }
+
+  Future<void> _goToPage(int page) async {
+    await ref.read(qaPairsNotifierProvider.notifier).goToPage(page);
+  }
+
+  Future<void> _maybeOpenInitialAnswer() async {
+    final id = _pendingAnswerId;
+    final normalizedContent = _normalizeText(_pendingAnswerContent);
+    if (id == null && (normalizedContent == null)) return;
+    if (!mounted) return;
+
+    QAPairEntity? pair;
+    final items =
+        ref.read(qaPairsNotifierProvider).page?.items ?? const <QAPairEntity>[];
+    for (final item in items) {
+      if (id != null && item.id == id) {
+        pair = item;
+        break;
+      }
+    }
+
+    if (pair == null && normalizedContent != null) {
+      for (final item in items) {
+        if (_normalizeText(item.answerText) == normalizedContent) {
+          pair = item;
+          break;
+        }
+      }
+    }
+
+    if (pair == null && id != null) {
+      pair = await _fetchPairById(id);
+    }
+
+    if (pair != null && mounted) {
+      _pendingAnswerId = null;
+      _pendingAnswerContent = null;
+      await Future.delayed(const Duration(milliseconds: 120));
+      await _showPairDetail(pair, highlight: true);
+    } else if (mounted) {
+      _pendingAnswerId = null;
+      _pendingAnswerContent = null;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không tìm thấy Q&A nguồn phù hợp.')),
+      );
     }
   }
 
-  void _openCreateSheet() async {
-    if (_selectedTopicId == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Hãy chọn Topic trước.')));
-      return;
+  Future<QAPairEntity?> _fetchPairById(String id) async {
+    try {
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(child: CircularProgressIndicator()),
+        );
+      }
+      final value = await ref.read(qaDetailProvider(id).future);
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      return value;
+    } catch (_) {
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      return null;
     }
-    final usecase = ref.read(getDocumentsByTopicProvider);
-    final res = await usecase(
-      topicId: _selectedTopicId!,
-      page: 1,
-      pageSize: 100,
-    );
-    final documents = res.fold<List<DocumentEntity>>((l) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l.message)));
-      return const [];
-    }, (r) => r.items);
+  }
+
+  String? _normalizeText(String? input) {
+    if (input == null) return null;
+    final normalized = input
+        .replaceAll(RegExp(r'<[^>]*>'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim()
+        .toLowerCase();
+    return normalized.isEmpty ? null : normalized;
+  }
+
+  void _openCreateSheet() async {
+    final topicsState = ref.read(topicsNotifierProvider);
+    final topics = topicsState.page?.items ?? const <TopicEntity>[];
 
     if (!mounted) return;
     showModalBottomSheet(
@@ -169,10 +304,9 @@ class _QaTabState extends ConsumerState<QaTab>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => CreateQAPairSheet(
-        topicId: _selectedTopicId!,
-        topicName: _selectedTopicName ?? '',
-        documents: documents,
-        defaultDocumentId: _selectedDocumentId,
+        topics: topics,
+        initialTopicId: _selectedTopicId,
+        initialDocumentId: _selectedDocumentId,
         onCreated: () async {
           Navigator.of(ctx).pop();
           await ref.read(qaPairsNotifierProvider.notifier).refresh();
@@ -181,12 +315,20 @@ class _QaTabState extends ConsumerState<QaTab>
     );
   }
 
-  void _openDetail(QAPairEntity pair) {
-    showModalBottomSheet(
+  Future<void> _openDetail(QAPairEntity pair) async {
+    await _showPairDetail(pair);
+  }
+
+  Future<void> _showPairDetail(
+    QAPairEntity pair, {
+    bool highlight = false,
+  }) async {
+    if (!mounted) return;
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => QaDetailSheet(pair: pair),
+      builder: (_) => QaDetailSheet(pair: pair, highlightAnswer: highlight),
     );
   }
 
@@ -242,6 +384,7 @@ class _QaTabState extends ConsumerState<QaTab>
     final qaState = ref.watch(qaPairsNotifierProvider);
     final topicsState = ref.watch(topicsNotifierProvider);
     final pairs = qaState.page?.items ?? const <QAPairEntity>[];
+    final pageMeta = qaState.page;
 
     return Stack(
       children: [
@@ -249,7 +392,9 @@ class _QaTabState extends ConsumerState<QaTab>
           onRefresh: _refresh,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
-            physics: const BouncingScrollPhysics(),
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
             children: [
               Text(
                 'Q&A Management',
@@ -260,51 +405,81 @@ class _QaTabState extends ConsumerState<QaTab>
                 ),
               ),
               const SizedBox(height: 16),
-              GestureDetector(
-                onTap: _pickTopic,
-                child: _SelectorCard(
-                  icon: Icons.layers_outlined,
-                  title: _selectedTopicName ?? 'Chọn Topic',
-                  isLoading: topicsState.loading && !_initialized,
-                ),
-              ),
-              if (_selectedTopicId != null) ...[
-                const SizedBox(height: 12),
-                GestureDetector(
-                  onTap: _pickDocument,
-                  child: _SelectorCard(
-                    icon: Icons.description_outlined,
-                    title:
-                        _selectedDocumentName ?? 'Lọc theo tài liệu (tùy chọn)',
-                    isLoading: false,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 20),
-              if (qaState.loading && pairs.isEmpty)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(40),
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-              if (!qaState.loading &&
-                  (_selectedTopicId == null || (pairs.isEmpty)))
-                Padding(
-                  padding: const EdgeInsets.only(top: 40),
-                  child: Text(
-                    _selectedTopicId == null
-                        ? 'Chưa chọn Topic nào'
-                        : 'Chưa có Q&A cho lựa chọn hiện tại',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.manrope(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black54,
+              Row(
+                children: [
+                  Expanded(
+                    child: _FilterButton(
+                      icon: Icons.layers_outlined,
+                      label: _selectedTopicName ?? 'Lọc theo Topic (tùy chọn)',
+                      onPressed: (topicsState.loading && !_initialized)
+                          ? null
+                          : _pickTopic,
+                      loading: topicsState.loading && !_initialized,
+                      active: _selectedTopicId != null,
                     ),
                   ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _FilterButton(
+                      icon: Icons.description_outlined,
+                      label: _selectedTopicId == null
+                          ? 'Chọn Topic trước để lọc tài liệu'
+                          : (_selectedDocumentName ??
+                                'Lọc theo tài liệu (tùy chọn)'),
+                      onPressed: _selectedTopicId == null
+                          ? null
+                          : _pickDocument,
+                      active: _selectedDocumentId != null,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: _hasFilters ? _clearFilters : null,
+                  icon: const Icon(Icons.filter_alt_off_outlined, size: 18),
+                  label: const Text('Xóa lọc'),
                 ),
-              if (_selectedTopicId != null)
+              ),
+              if (_hasFilters) ...[
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    if (_selectedTopicName != null)
+                      Chip(
+                        label: Text('Topic: $_selectedTopicName'),
+                        onDeleted: () => _removeTopicFilter(),
+                      ),
+                    if (_selectedDocumentName != null)
+                      Chip(
+                        label: Text('Document: $_selectedDocumentName'),
+                        onDeleted: () => _removeDocumentFilter(),
+                      ),
+                  ],
+                ),
+              ],
+              if (qaState.error != null) ...[
+                const SizedBox(height: 12),
+                _ErrorBanner(message: qaState.error!),
+              ],
+              if (qaState.loading && pairs.isEmpty) ...[
+                const SizedBox(height: 40),
+                const Center(child: CircularProgressIndicator()),
+                const SizedBox(height: 40),
+              ] else if (!qaState.loading && pairs.isEmpty) ...[
+                const SizedBox(height: 40),
+                _EmptyState(
+                  message: _hasFilters
+                      ? 'Không tìm thấy Q&A phù hợp với bộ lọc.'
+                      : 'Chưa có Q&A nào được tạo.',
+                ),
+                const SizedBox(height: 40),
+              ] else ...[
+                const SizedBox(height: 12),
                 for (final pair in pairs) ...[
                   _QACard(
                     pair: pair,
@@ -314,6 +489,7 @@ class _QaTabState extends ConsumerState<QaTab>
                   ),
                   const SizedBox(height: 14),
                 ],
+              ],
               if (qaState.loading && pairs.isNotEmpty)
                 const Center(
                   child: Padding(
@@ -321,6 +497,19 @@ class _QaTabState extends ConsumerState<QaTab>
                     child: CircularProgressIndicator(),
                   ),
                 ),
+              if (pageMeta != null && pageMeta.totalPages > 1) ...[
+                const SizedBox(height: 12),
+                _PaginationBar(
+                  currentPage: pageMeta.currentPage,
+                  totalPages: pageMeta.totalPages,
+                  onPrev: pageMeta.hasPreviousPage
+                      ? () => _goToPage(pageMeta.currentPage - 1)
+                      : null,
+                  onNext: pageMeta.hasNextPage
+                      ? () => _goToPage(pageMeta.currentPage + 1)
+                      : null,
+                ),
+              ],
             ],
           ),
         ),
@@ -349,57 +538,68 @@ class _QaTabState extends ConsumerState<QaTab>
   bool get wantKeepAlive => true;
 }
 
-class _SelectorCard extends StatelessWidget {
+class _FilterButton extends StatelessWidget {
   final IconData icon;
-  final String title;
-  final bool isLoading;
-  const _SelectorCard({
+  final String label;
+  final VoidCallback? onPressed;
+  final bool active;
+  final bool loading;
+  const _FilterButton({
     required this.icon,
-    required this.title,
-    this.isLoading = false,
+    required this.label,
+    this.onPressed,
+    this.active = false,
+    this.loading = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black.withOpacity(.08)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.04),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
+    final enabled = onPressed != null;
+    final iconColor = !enabled
+        ? const Color(0xFF98A2B3)
+        : (active ? const Color(0xFF2563EB) : const Color(0xFF475467));
+    final textColor = !enabled
+        ? const Color(0xFF98A2B3)
+        : (active ? const Color(0xFF2563EB) : const Color(0xFF101828));
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        side: BorderSide(
+          color: active ? const Color(0xFF2563EB) : const Color(0xFFE4E7EC),
+        ),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
       child: Row(
         children: [
-          Icon(icon, color: const Color(0xFF98A2B3)),
-          const SizedBox(width: 12),
+          Icon(icon, size: 18, color: iconColor),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
-              title,
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: GoogleFonts.manrope(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF101828),
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
+                color: textColor,
               ),
             ),
           ),
-          if (isLoading)
+          if (loading)
             const SizedBox(
-              width: 18,
-              height: 18,
+              width: 16,
+              height: 16,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           else
-            const Icon(
+            Icon(
               Icons.keyboard_arrow_down_rounded,
-              size: 24,
-              color: Color(0xFF98A2B3),
+              size: 20,
+              color: enabled
+                  ? const Color(0xFF98A2B3)
+                  : const Color(0x8098A2B3),
             ),
         ],
       ),
@@ -407,9 +607,110 @@ class _SelectorCard extends StatelessWidget {
   }
 }
 
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+  const _ErrorBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFE4E6),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFECACA)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, color: Color(0xFFDC2626)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: GoogleFonts.manrope(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF991B1B),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  final String message;
+  const _EmptyState({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const Icon(Icons.inbox_outlined, size: 48, color: Color(0xFF98A2B3)),
+        const SizedBox(height: 12),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.manrope(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF475467),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PaginationBar extends StatelessWidget {
+  final int currentPage;
+  final int totalPages;
+  final VoidCallback? onPrev;
+  final VoidCallback? onNext;
+
+  const _PaginationBar({
+    required this.currentPage,
+    required this.totalPages,
+    this.onPrev,
+    this.onNext,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        OutlinedButton.icon(
+          onPressed: onPrev,
+          icon: const Icon(Icons.chevron_left),
+          label: const Text('Trước'),
+        ),
+        const SizedBox(width: 16),
+        Text(
+          'Trang $currentPage / $totalPages',
+          style: GoogleFonts.manrope(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF475467),
+          ),
+        ),
+        const SizedBox(width: 16),
+        OutlinedButton.icon(
+          onPressed: onNext,
+          icon: const Icon(Icons.chevron_right),
+          label: const Text('Sau'),
+        ),
+      ],
+    );
+  }
+}
+
 class _TopicPickerSheet extends StatelessWidget {
   final TopicsState state;
-  const _TopicPickerSheet({required this.state});
+  final String? currentTopicId;
+  const _TopicPickerSheet({required this.state, this.currentTopicId});
 
   @override
   Widget build(BuildContext context) {
@@ -449,6 +750,14 @@ class _TopicPickerSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
+          ListTile(
+            leading: const Icon(Icons.all_inbox_outlined),
+            title: const Text('Tất cả Q&A'),
+            trailing: currentTopicId == null
+                ? const Icon(Icons.check, color: Color(0xFF2563EB))
+                : null,
+            onTap: () => Navigator.of(context).pop(null),
+          ),
           if (state.loading)
             const Center(child: CircularProgressIndicator())
           else
@@ -458,11 +767,15 @@ class _TopicPickerSheet extends StatelessWidget {
                 itemCount: topics.length,
                 itemBuilder: (ctx, i) {
                   final t = topics[i];
+                  final selected = currentTopicId == t.id;
                   return ListTile(
                     title: Text(t.name),
                     subtitle:
                         (t.description != null && t.description!.isNotEmpty)
                         ? Text(t.description!)
+                        : null,
+                    trailing: selected
+                        ? const Icon(Icons.check, color: Color(0xFF2563EB))
                         : null,
                     onTap: () => Navigator.of(context).pop(t),
                   );
@@ -573,11 +886,11 @@ class _QACard extends StatelessWidget {
             color: Colors.white,
             borderRadius: r16,
             border: Border.all(color: const Color(0xFFE4E7EC)),
-            boxShadow: [
+            boxShadow: const [
               BoxShadow(
-                color: Colors.black.withOpacity(.05),
+                color: Color(0x0D000000),
                 blurRadius: 16,
-                offset: const Offset(0, 8),
+                offset: Offset(0, 8),
               ),
             ],
           ),
@@ -618,7 +931,7 @@ class _QACard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.manrope(
                         fontSize: 13,
-                        color: Colors.black.withOpacity(.65),
+                        color: const Color(0xA6000000),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -703,7 +1016,12 @@ class _Badge extends StatelessWidget {
 
 class QaDetailSheet extends StatelessWidget {
   final QAPairEntity pair;
-  const QaDetailSheet({super.key, required this.pair});
+  final bool highlightAnswer;
+  const QaDetailSheet({
+    super.key,
+    required this.pair,
+    this.highlightAnswer = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -759,11 +1077,25 @@ class QaDetailSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            Text(
-              pair.answerText,
-              style: GoogleFonts.manrope(
-                fontSize: 15,
-                color: const Color(0xFF101828),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              padding: highlightAnswer
+                  ? const EdgeInsets.all(12)
+                  : EdgeInsets.zero,
+              decoration: highlightAnswer
+                  ? BoxDecoration(
+                      color: const Color(0xFFFFF7E6),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFFFB020)),
+                    )
+                  : null,
+              child: Text(
+                pair.answerText,
+                style: GoogleFonts.manrope(
+                  fontSize: 15,
+                  color: const Color(0xFF101828),
+                ),
               ),
             ),
             const SizedBox(height: 18),
@@ -817,17 +1149,15 @@ class QaDetailSheet extends StatelessWidget {
 }
 
 class CreateQAPairSheet extends ConsumerStatefulWidget {
-  final String topicId;
-  final String topicName;
-  final List<DocumentEntity> documents;
-  final String? defaultDocumentId;
+  final List<TopicEntity> topics;
+  final String? initialTopicId;
+  final String? initialDocumentId;
   final VoidCallback onCreated;
   const CreateQAPairSheet({
     super.key,
-    required this.topicId,
-    required this.topicName,
-    required this.documents,
-    this.defaultDocumentId,
+    required this.topics,
+    this.initialTopicId,
+    this.initialDocumentId,
     required this.onCreated,
   });
 
@@ -839,13 +1169,20 @@ class _CreateQAPairSheetState extends ConsumerState<CreateQAPairSheet> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _questionCtrl = TextEditingController();
   final TextEditingController _answerCtrl = TextEditingController();
+  String? _topicId;
   String? _documentId;
+  List<DocumentEntity> _documents = const <DocumentEntity>[];
+  bool _loadingDocuments = false;
   bool _submitting = false;
 
   @override
   void initState() {
     super.initState();
-    _documentId = widget.defaultDocumentId;
+    _topicId = widget.initialTopicId;
+    _documentId = widget.initialDocumentId;
+    if (_topicId != null) {
+      Future.microtask(() => _loadDocuments(_topicId!));
+    }
   }
 
   @override
@@ -855,11 +1192,52 @@ class _CreateQAPairSheetState extends ConsumerState<CreateQAPairSheet> {
     super.dispose();
   }
 
+  Future<void> _loadDocuments(String topicId) async {
+    setState(() {
+      _loadingDocuments = true;
+    });
+    final usecase = ref.read(getDocumentsByTopicProvider);
+    final res = await usecase(topicId: topicId, page: 1, pageSize: 100);
+    if (!mounted) return;
+    res.fold(
+      (l) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l.message)));
+        setState(() {
+          _documents = const <DocumentEntity>[];
+          _documentId = null;
+          _loadingDocuments = false;
+        });
+      },
+      (r) {
+        setState(() {
+          _documents = r.items;
+          if (!_documents.any((doc) => doc.id == _documentId)) {
+            _documentId = null;
+          }
+          _loadingDocuments = false;
+        });
+      },
+    );
+  }
+
+  void _onTopicChanged(String? value) {
+    setState(() {
+      _topicId = value;
+      _documentId = null;
+      _documents = const <DocumentEntity>[];
+    });
+    if (value != null) {
+      _loadDocuments(value);
+    }
+  }
+
   Future<void> _submit() async {
     if (_formKey.currentState?.validate() != true) return;
     setState(() => _submitting = true);
     final res = await ref.read(createQAPairProvider)(
-      topicId: widget.topicId,
+      topicId: _topicId,
       documentId: _documentId,
       questionText: _questionCtrl.text.trim(),
       answerText: _answerCtrl.text.trim(),
@@ -910,30 +1288,55 @@ class _CreateQAPairSheetState extends ConsumerState<CreateQAPairSheet> {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Topic: ${widget.topicName}',
-                style: GoogleFonts.manrope(fontSize: 13, color: Colors.black54),
-              ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String?>(
-                value: _documentId,
+                initialValue: _topicId,
+                isExpanded: true,
                 decoration: const InputDecoration(
-                  labelText: 'Liên kết Document (tùy chọn)',
+                  labelText: 'Liên kết Topic (tùy chọn)',
                 ),
                 items: [
                   const DropdownMenuItem<String?>(
                     value: null,
-                    child: Text('Không liên kết'),
+                    child: Text('Không liên kết Topic'),
                   ),
-                  ...widget.documents.map(
+                  ...widget.topics.map(
+                    (topic) => DropdownMenuItem<String?>(
+                      value: topic.id,
+                      child: Text(topic.name),
+                    ),
+                  ),
+                ],
+                onChanged: (value) => _onTopicChanged(value),
+              ),
+              if (_loadingDocuments) ...[
+                const SizedBox(height: 8),
+                const LinearProgressIndicator(minHeight: 4),
+              ],
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String?>(
+                initialValue: _documentId,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: _topicId == null
+                      ? 'Chọn Topic để hiển thị Document'
+                      : 'Liên kết Document (tùy chọn)',
+                ),
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('Không liên kết Document'),
+                  ),
+                  ..._documents.map(
                     (doc) => DropdownMenuItem<String?>(
                       value: doc.id,
                       child: Text(doc.title),
                     ),
                   ),
                 ],
-                onChanged: (value) => setState(() => _documentId = value),
+                onChanged: _topicId == null
+                    ? null
+                    : (value) => setState(() => _documentId = value),
               ),
               const SizedBox(height: 16),
               TextFormField(

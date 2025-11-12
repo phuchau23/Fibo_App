@@ -28,12 +28,18 @@ abstract class DocumentRepository {
 
   Future<Either<DocFailure, Unit>> updateDocument({
     required String id,
-    String? title,
-    int? version,
-    String? status,
+    required String topicId,
+    required String documentTypeId,
+    required String title,
+    required int version,
+    MultipartFile? file,
   });
 
   Future<Either<DocFailure, Unit>> deleteDocument(String id);
+
+  Future<Either<DocFailure, Unit>> publishDocument(String id);
+
+  Future<Either<DocFailure, Unit>> unpublishDocument(String id);
 
   Future<Either<DocFailure, DocumentDetailEntity>> getDocumentById(String id);
 }

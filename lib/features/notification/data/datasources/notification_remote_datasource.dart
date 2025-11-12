@@ -15,6 +15,12 @@ abstract class NotificationRemoteDataSource {
     int pageSize = 20,
   });
   Future<NotificationModel> getNotificationById(String id);
+  Future<void> markNotificationRead({
+    required String lecturerId,
+    required String notificationId,
+    bool isRead = true,
+  });
+  Future<void> markAllNotificationsRead(String lecturerId);
 }
 
 class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
@@ -68,6 +74,37 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
         ApiEndpoints.notificationById(id),
       );
       return NotificationModel.fromJson(response.data['data']);
+    } on DioException catch (e) {
+      throw ServerException(
+        e.response?.data?['message']?.toString() ?? e.message ?? 'Server error',
+        e.response?.statusCode?.toString(),
+      );
+    }
+  }
+
+  @override
+  Future<void> markNotificationRead({
+    required String lecturerId,
+    required String notificationId,
+    bool isRead = true,
+  }) async {
+    try {
+      await apiClient.dio.put(
+        ApiEndpoints.notificationMarkRead(lecturerId, notificationId),
+        queryParameters: {'isRead': isRead},
+      );
+    } on DioException catch (e) {
+      throw ServerException(
+        e.response?.data?['message']?.toString() ?? e.message ?? 'Server error',
+        e.response?.statusCode?.toString(),
+      );
+    }
+  }
+
+  @override
+  Future<void> markAllNotificationsRead(String lecturerId) async {
+    try {
+      await apiClient.dio.put(ApiEndpoints.notificationMarkAllRead(lecturerId));
     } on DioException catch (e) {
       throw ServerException(
         e.response?.data?['message']?.toString() ?? e.message ?? 'Server error',

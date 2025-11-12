@@ -54,6 +54,8 @@ class DocumentRemoteDataSource {
       'DocumentTypeId': documentTypeId,
       'Title': title,
       'File': file,
+      'AutoEmbed': true,
+      'AutoLoadCache': true,
     });
     final resp = await _client.post<Map<String, dynamic>>(
       '/course/api/documents/upload',
@@ -65,14 +67,20 @@ class DocumentRemoteDataSource {
 
   Future<Map<String, dynamic>> updateDocument({
     required String id,
-    String? title,
-    int? version,
-    String? status, // Draft/Active/Needreview... theo backend
+    required String topicId,
+    required String documentTypeId,
+    required String title,
+    required int version,
+    MultipartFile? file,
   }) async {
     final form = FormData.fromMap({
-      if (title != null) 'Title': title,
-      if (version != null) 'Version': version,
-      if (status != null) 'Status': status,
+      'TopicId': topicId,
+      'DocumentTypeId': documentTypeId,
+      'Title': title,
+      'Version': version,
+      'AutoEmbed': true,
+      'AutoLoadCache': true,
+      if (file != null) 'File': file,
     });
     final resp = await _client.put<Map<String, dynamic>>(
       '/course/api/documents/$id',
@@ -84,6 +92,14 @@ class DocumentRemoteDataSource {
 
   Future<void> deleteDocument(String id) async {
     await _client.delete('/course/api/documents/$id');
+  }
+
+  Future<void> publishDocument(String id) async {
+    await _client.post('/course/api/documents/$id/publish');
+  }
+
+  Future<void> unpublishDocument(String id) async {
+    await _client.post('/course/api/documents/$id/unpublish');
   }
 
   Future<DocumentDetailResponse> getDocumentById(String id) async {

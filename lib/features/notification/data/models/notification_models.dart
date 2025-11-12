@@ -3,7 +3,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'notification_models.g.dart';
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class NotificationModel {
   final String id;
   final String type;
@@ -33,7 +33,7 @@ class NotificationModel {
       _$NotificationModelFromJson(json);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class PagedNotificationsResponse {
   final int statusCode;
   final String code;
@@ -51,7 +51,7 @@ class PagedNotificationsResponse {
       _$PagedNotificationsResponseFromJson(json);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class NotificationPagedData {
   final List<NotificationModel> items;
   final int totalItems;
@@ -74,4 +74,3 @@ class NotificationPagedData {
   factory NotificationPagedData.fromJson(Map<String, dynamic> json) =>
       _$NotificationPagedDataFromJson(json);
 }
-

@@ -1,0 +1,94 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:swp_app/features/notification/presentation/models/notification_navigation.dart';
+import 'package:swp_app/shared/presentation/providers/navigation_provider.dart';
+
+final fcmServiceProvider = Provider<FcmService>((ref) => FcmService(ref));
+
+class FcmService {
+  FcmService(this._ref);
+
+  final Ref _ref;
+  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  bool _initialized = false;
+
+  Future<void> initialize() async {
+    if (_initialized) return;
+    _initialized = true;
+
+    await _requestPermission();
+    await _syncToken();
+
+    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
+
+    final initialMessage = await _messaging.getInitialMessage();
+    if (initialMessage != null) {
+      _handleMessageOpenedApp(initialMessage);
+    }
+  }
+
+  Future<void> _requestPermission() async {
+    final settings = await _messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+      announcement: false,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false,
+    );
+    debugPrint('FCM permission status: ${settings.authorizationStatus}');
+  }
+
+  Future<void> _syncToken() async {
+    final token = await _messaging.getToken();
+    if (token != null) {
+      _ref.read(fcmDeviceTokenProvider.notifier).state = token;
+      debugPrint('FCM token: $token');
+    }
+    _messaging.onTokenRefresh.listen((token) {
+      _ref.read(fcmDeviceTokenProvider.notifier).state = token;
+      debugPrint('FCM token refreshed: $token');
+    });
+  }
+
+  void _handleForegroundMessage(RemoteMessage message) {
+    final title =
+        message.notification?.title ?? message.data['title'] ?? 'Thông báo mới';
+    final body =
+        message.notification?.body ??
+        message.data['body'] ??
+        'Bạn có thông báo mới.';
+    final action = _parseAction(message);
+    _ref.read(inAppNotificationProvider.notifier).state =
+        InAppNotificationPayload(title: title, body: body, action: action);
+  }
+
+  void _handleMessageOpenedApp(RemoteMessage message) {
+    final action = _parseAction(message);
+    if (action != null) {
+      _ref.read(pendingNotificationActionProvider.notifier).state = action;
+    }
+    _ref.read(navigationRequestProvider.notifier).state =
+        const NavigationRequest(target: NavigationTarget.notifications);
+  }
+
+  void handleForegroundTap(NotificationNavigationAction action) {
+    _ref.read(pendingNotificationActionProvider.notifier).state = action;
+    _ref.read(navigationRequestProvider.notifier).state =
+        const NavigationRequest(target: NavigationTarget.notifications);
+  }
+
+  NotificationNavigationAction? _parseAction(RemoteMessage message) {
+    final data = message.data;
+    final notificationId = data['notificationId'] ?? data['id'];
+    if (notificationId == null) return null;
+    final feedbackId = data['feedbackId'] ?? data['relatedEntityId'];
+    return NotificationNavigationAction(
+      notificationId: notificationId,
+      feedbackId: feedbackId,
+    );
+  }
+}

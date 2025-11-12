@@ -44,3 +44,31 @@ class GetNotificationById {
     return await repository.getNotificationById(id);
   }
 }
+
+class MarkNotificationRead {
+  final NotificationRepository repository;
+
+  MarkNotificationRead(this.repository);
+
+  Future<Either<NotificationFailure, Unit>> call({
+    required String lecturerId,
+    required String notificationId,
+    bool isRead = true,
+  }) {
+    return repository.markNotificationRead(
+      lecturerId: lecturerId,
+      notificationId: notificationId,
+      isRead: isRead,
+    );
+  }
+}
+
+class MarkAllNotificationsRead {
+  final NotificationRepository repository;
+
+  MarkAllNotificationsRead(this.repository);
+
+  Future<Either<NotificationFailure, Unit>> call(String lecturerId) {
+    return repository.markAllNotificationsRead(lecturerId);
+  }
+}

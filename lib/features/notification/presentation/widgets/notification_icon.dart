@@ -57,14 +57,14 @@ class _NotificationIconState extends ConsumerState<NotificationIcon> {
               }
             });
           } catch (e) {
-            print('Error connecting to SignalR: $e');
+            debugPrint('Error connecting to SignalR: $e');
           }
         },
         loading: () {},
         error: (_, __) {},
       );
     } catch (e) {
-      print('Error initializing notifications: $e');
+      debugPrint('Error initializing notifications: $e');
     }
   }
 

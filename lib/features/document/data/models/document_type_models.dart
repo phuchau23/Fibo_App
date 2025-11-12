@@ -3,7 +3,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'document_type_models.g.dart';
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class DocumentTypeModel {
   final String id;
   final String name;
@@ -19,15 +19,14 @@ class DocumentTypeModel {
 
   factory DocumentTypeModel.fromJson(Map<String, dynamic> json) =>
       _$DocumentTypeModelFromJson(json);
-  Map<String, dynamic> toJson() => _$DocumentTypeModelToJson(this);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class PagedDocumentTypesResponse {
   final int statusCode;
   final String code;
   final String message;
-  final _DocumentTypePagedData data;
+  final DocumentTypePagedDataModel data;
 
   PagedDocumentTypesResponse({
     required this.statusCode,
@@ -40,8 +39,8 @@ class PagedDocumentTypesResponse {
       _$PagedDocumentTypesResponseFromJson(json);
 }
 
-@JsonSerializable()
-class _DocumentTypePagedData {
+@JsonSerializable(createToJson: false)
+class DocumentTypePagedDataModel {
   final List<DocumentTypeModel> items;
   final int totalItems;
   final int currentPage;
@@ -50,7 +49,7 @@ class _DocumentTypePagedData {
   final bool hasPreviousPage;
   final bool hasNextPage;
 
-  _DocumentTypePagedData({
+  DocumentTypePagedDataModel({
     required this.items,
     required this.totalItems,
     required this.currentPage,
@@ -60,14 +59,6 @@ class _DocumentTypePagedData {
     required this.hasNextPage,
   });
 
-  factory _DocumentTypePagedData.fromJson(Map<String, dynamic> json) =>
-      _$DocumentTypePagedDataFromJson(json);
-}
-
-@JsonSerializable()
-class CreateDocumentTypeRequest {
-  final String name;
-  CreateDocumentTypeRequest({required this.name});
-
-  Map<String, dynamic> toJson() => _$CreateDocumentTypeRequestToJson(this);
+  factory DocumentTypePagedDataModel.fromJson(Map<String, dynamic> json) =>
+      _$DocumentTypePagedDataModelFromJson(json);
 }

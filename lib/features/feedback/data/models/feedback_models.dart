@@ -3,7 +3,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'feedback_models.g.dart';
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class FeedbackModel {
   final String id;
   final FeedbackUserModel user;
@@ -27,7 +27,7 @@ class FeedbackModel {
       _$FeedbackModelFromJson(json);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class FeedbackUserModel {
   final String id;
   final String firstName;
@@ -53,7 +53,7 @@ class FeedbackUserModel {
       _$FeedbackUserModelFromJson(json);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class FeedbackClassModel {
   final String id;
   final String? code;
@@ -71,7 +71,7 @@ class FeedbackClassModel {
       _$FeedbackClassModelFromJson(json);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class FeedbackLecturerModel {
   final String id;
   final String? fullName;
@@ -82,7 +82,7 @@ class FeedbackLecturerModel {
       _$FeedbackLecturerModelFromJson(json);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class FeedbackGroupModel {
   final String id;
   final String? name;
@@ -93,7 +93,7 @@ class FeedbackGroupModel {
       _$FeedbackGroupModelFromJson(json);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class FeedbackAnswerModel {
   final String id;
   final String? content;
@@ -104,7 +104,7 @@ class FeedbackAnswerModel {
       _$FeedbackAnswerModelFromJson(json);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class FeedbackTopicModel {
   final String id;
   final String? name;
@@ -115,7 +115,7 @@ class FeedbackTopicModel {
       _$FeedbackTopicModelFromJson(json);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class PagedFeedbackResponse {
   final int statusCode;
   final String code;
@@ -133,7 +133,7 @@ class PagedFeedbackResponse {
       _$PagedFeedbackResponseFromJson(json);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class FeedbackPagedData {
   final List<FeedbackModel> items;
   final int totalItems;

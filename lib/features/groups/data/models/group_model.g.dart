@@ -13,7 +13,7 @@ GroupModel _$GroupModelFromJson(Map<String, dynamic> json) => GroupModel(
       status: json['status'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String),
       classInfo:
-          GroupClassModel.fromJson(json['classInfo'] as Map<String, dynamic>),
+          GroupClassModel.fromJson(json['class'] as Map<String, dynamic>),
       topic: json['topic'] == null
           ? null
           : GroupTopicModel.fromJson(json['topic'] as Map<String, dynamic>),
@@ -26,7 +26,7 @@ Map<String, dynamic> _$GroupModelToJson(GroupModel instance) =>
       'description': instance.description,
       'status': instance.status,
       'createdAt': instance.createdAt.toIso8601String(),
-      'classInfo': instance.classInfo,
+      'class': instance.classInfo,
       'topic': instance.topic,
     };
 

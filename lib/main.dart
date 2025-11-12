@@ -1,22 +1,36 @@
 // main.dart
-import 'package:flutter/material.dart' show ThemeMode, Scaffold;
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:swp_app/core/services/fcm_service.dart';
 import 'package:swp_app/core/theme/shadcn_theme.dart';
+import 'package:swp_app/firebase_options.dart';
 import 'package:swp_app/features/profile/presentation/pages/change_password_page.dart';
 import 'package:swp_app/features/profile/presentation/pages/edit_profile_page.dart';
 import 'package:swp_app/shared/presentation/footer-menu.dart';
-import 'package:intl/date_symbol_data_local.dart';
-
-// Pages
+import 'package:swp_app/shared/presentation/pages/home_page.dart';
 import 'package:swp_app/features/auth/presentation/pages/login_page.dart';
 import 'package:swp_app/features/auth/presentation/pages/register_page.dart';
-import 'package:swp_app/shared/presentation/pages/home_page.dart';
+import 'package:swp_app/features/notification/presentation/models/notification_navigation.dart';
+
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   await initializeDateFormatting('vi_VN', null);
   runApp(const ProviderScope(child: AppRoot()));
 }
@@ -37,18 +51,6 @@ final _router = GoRouter(
       builder: (context, state) => const RegisterPage(),
     ),
 
-    // GoRoute(
-    //   path: '/profile/edit',
-    //   name: 'edit-profile',
-    //   builder: (context, state) => const EditProfilePage(),
-    // ),
-    // // ...
-    // GoRoute(
-    //   path: '/profile/change-password',
-    //   name: 'change-password',
-    //   builder: (context, state) => const ChangePasswordPage(),
-    // ),
-
     // ===== Shell có Footer dưới cùng =====
     ShellRoute(
       builder: (context, state, child) {
@@ -56,8 +58,6 @@ final _router = GoRouter(
         return Scaffold(
           backgroundColor: colors.background,
           body: SafeArea(
-            // Lưu ý: nếu child tự là Scaffold thì vẫn hoạt động;
-            // tốt nhất là tránh Scaffold lồng Scaffold trong các page con.
             child: child,
           ),
           bottomNavigationBar: const FooterMenu(),
@@ -69,15 +69,130 @@ final _router = GoRouter(
           name: 'home',
           builder: (context, state) => const HomePage(),
         ),
-        // Thêm các màn khác cần footer vào đây:
-        // GoRoute(path: '/profile', builder: (_, __) => const ProfilePage()),
       ],
     ),
   ],
 );
 
-class AppRoot extends StatelessWidget {
+class AppRoot extends ConsumerStatefulWidget {
   const AppRoot({super.key});
+
+  @override
+  ConsumerState<AppRoot> createState() => _AppRootState();
+}
+
+class _AppRootState extends ConsumerState<AppRoot> {
+  bool _showingNotification = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(fcmServiceProvider).initialize();
+    });
+    ref.listen<InAppNotificationPayload?>(
+      inAppNotificationProvider,
+      (previous, next) {
+        if (next != null && !_showingNotification) {
+          _showingNotification = true;
+          Future.microtask(() async {
+            await _showInAppNotification(next);
+            _showingNotification = false;
+            ref.read(inAppNotificationProvider.notifier).state = null;
+          });
+        }
+      },
+    );
+  }
+
+  Future<void> _showInAppNotification(InAppNotificationPayload payload) async {
+    if (!mounted) return;
+    final shouldNavigate = await showModalBottomSheet<bool>(
+          context: context,
+          backgroundColor: Colors.transparent,
+          builder: (context) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x1A000000),
+                        blurRadius: 18,
+                        offset: Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.notifications_active_outlined,
+                            color: Color(0xFF2563EB),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              payload.title,
+                              style: GoogleFonts.manrope(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFF101828),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        payload.body,
+                        style: GoogleFonts.manrope(
+                          fontSize: 14,
+                          color: const Color(0xFF475467),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: const Text('Đóng'),
+                          ),
+                          const Spacer(),
+                          if (payload.action != null)
+                            ElevatedButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF2563EB),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text('Xem chi tiết'),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ) ??
+        false;
+
+    if (shouldNavigate && payload.action != null) {
+      ref.read(fcmServiceProvider).handleForegroundTap(payload.action!);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +202,6 @@ class AppRoot extends StatelessWidget {
       theme: FiboShadcnTheme.lightTheme,
       darkTheme: FiboShadcnTheme.darkTheme,
       routerConfig: _router,
-      // ShadToaster yêu cầu truyền child bắt buộc
       builder: (context, child) =>
           ShadToaster(child: child ?? const SizedBox.shrink()),
     );

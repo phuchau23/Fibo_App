@@ -54,6 +54,36 @@ class NotificationRepositoryImpl implements NotificationRepository {
     }
   }
 
+  @override
+  Future<Either<NotificationFailure, Unit>> markNotificationRead({
+    required String lecturerId,
+    required String notificationId,
+    bool isRead = true,
+  }) async {
+    try {
+      await remote.markNotificationRead(
+        lecturerId: lecturerId,
+        notificationId: notificationId,
+        isRead: isRead,
+      );
+      return const Right(unit);
+    } catch (e) {
+      return Left(NotificationFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<NotificationFailure, Unit>> markAllNotificationsRead(
+    String lecturerId,
+  ) async {
+    try {
+      await remote.markAllNotificationsRead(lecturerId);
+      return const Right(unit);
+    } catch (e) {
+      return Left(NotificationFailure(e.toString()));
+    }
+  }
+
   NotificationPagedEntity _mapPagedResponse(NotificationPagedData data) {
     return NotificationPagedEntity(
       items: data.items.map((m) => _mapModel(m)).toList(),

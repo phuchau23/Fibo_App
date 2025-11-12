@@ -3,10 +3,10 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'qa_models.g.dart';
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class QAPairModel {
   final String id;
-  final String topicId;
+  final String? topicId;
   final String? documentId;
   final String createdById;
   final String? verifiedById;
@@ -18,7 +18,7 @@ class QAPairModel {
 
   QAPairModel({
     required this.id,
-    required this.topicId,
+    this.topicId,
     this.documentId,
     required this.createdById,
     this.verifiedById,
@@ -33,7 +33,7 @@ class QAPairModel {
       _$QAPairModelFromJson(json);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class PagedQAPairsResponse {
   final int statusCode;
   final String code;
@@ -51,7 +51,7 @@ class PagedQAPairsResponse {
       _$PagedQAPairsResponseFromJson(json);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class QAPairsPagedData {
   final List<QAPairModel> items;
   final int totalItems;
@@ -75,7 +75,7 @@ class QAPairsPagedData {
       _$QAPairsPagedDataFromJson(json);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class QAPairDetailResponse {
   final int statusCode;
   final String code;

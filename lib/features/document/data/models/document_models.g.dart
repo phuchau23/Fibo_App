@@ -18,38 +18,19 @@ DocumentModel _$DocumentModelFromJson(Map<String, dynamic> json) =>
       createdAt: json['createdAt'] as String,
     );
 
-Map<String, dynamic> _$DocumentModelToJson(DocumentModel instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'topicId': instance.topicId,
-      'documentTypeId': instance.documentTypeId,
-      'fileId': instance.fileId,
-      'title': instance.title,
-      'version': instance.version,
-      'status': instance.status,
-      'createdAt': instance.createdAt,
-    };
-
 PagedDocumentsResponse _$PagedDocumentsResponseFromJson(
         Map<String, dynamic> json) =>
     PagedDocumentsResponse(
       statusCode: (json['statusCode'] as num).toInt(),
       code: json['code'] as String,
       message: json['message'] as String,
-      data: _DocumentsPagedData.fromJson(json['data'] as Map<String, dynamic>),
+      data: DocumentsPagedDataModel.fromJson(
+          json['data'] as Map<String, dynamic>),
     );
 
-Map<String, dynamic> _$PagedDocumentsResponseToJson(
-        PagedDocumentsResponse instance) =>
-    <String, dynamic>{
-      'statusCode': instance.statusCode,
-      'code': instance.code,
-      'message': instance.message,
-      'data': instance.data,
-    };
-
-_DocumentsPagedData _$DocumentsPagedDataFromJson(Map<String, dynamic> json) =>
-    _DocumentsPagedData(
+DocumentsPagedDataModel _$DocumentsPagedDataModelFromJson(
+        Map<String, dynamic> json) =>
+    DocumentsPagedDataModel(
       items: (json['items'] as List<dynamic>)
           .map((e) => DocumentModel.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -60,14 +41,3 @@ _DocumentsPagedData _$DocumentsPagedDataFromJson(Map<String, dynamic> json) =>
       hasPreviousPage: json['hasPreviousPage'] as bool,
       hasNextPage: json['hasNextPage'] as bool,
     );
-
-Map<String, dynamic> _$DocumentsPagedDataToJson(_DocumentsPagedData instance) =>
-    <String, dynamic>{
-      'items': instance.items,
-      'totalItems': instance.totalItems,
-      'currentPage': instance.currentPage,
-      'totalPages': instance.totalPages,
-      'pageSize': instance.pageSize,
-      'hasPreviousPage': instance.hasPreviousPage,
-      'hasNextPage': instance.hasNextPage,
-    };
