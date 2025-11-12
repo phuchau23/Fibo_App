@@ -18,11 +18,25 @@ import 'package:swp_app/features/notification/presentation/models/notification_n
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Initialize Firebase if not already initialized
   if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
   }
+
+  // Log để debug (chỉ khi app đã tắt hoàn toàn)
+  debugPrint('📱 [BACKGROUND] Received notification when app is terminated:');
+  debugPrint(
+    '   Title: ${message.notification?.title ?? message.data['title']}',
+  );
+  debugPrint('   Body: ${message.notification?.body ?? message.data['body']}');
+  debugPrint('   Data: ${message.data}');
+
+  // Note: Khi app đã tắt, Firebase sẽ tự động hiển thị notification ở status bar
+  // nếu payload có 'notification' object (title, body).
+  // Logic xử lý navigation sẽ được thực hiện khi user click vào notification
+  // thông qua getInitialMessage() trong initialize().
 }
 
 void main() async {
