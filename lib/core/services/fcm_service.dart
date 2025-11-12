@@ -38,6 +38,23 @@ class FcmService {
     if (_requestingPermission) return;
     _requestingPermission = true;
     try {
+      // Kiểm tra permission status hiện tại
+      final currentSettings = await _messaging.getNotificationSettings();
+      debugPrint(
+        'FCM current permission status: ${currentSettings.authorizationStatus}',
+      );
+
+      // Nếu đã được cấp rồi thì không cần request lại
+      if (currentSettings.authorizationStatus ==
+              AuthorizationStatus.authorized ||
+          currentSettings.authorizationStatus ==
+              AuthorizationStatus.provisional) {
+        debugPrint('✅ FCM permission already granted, skipping request');
+        return;
+      }
+
+      // Request permission (chỉ hiển thị dialog nếu chưa được cấp)
+      debugPrint('📱 Requesting FCM permission...');
       final settings = await _messaging.requestPermission(
         alert: true,
         badge: true,
@@ -47,7 +64,22 @@ class FcmService {
         criticalAlert: false,
         provisional: false,
       );
-      debugPrint('FCM permission status: ${settings.authorizationStatus}');
+      debugPrint(
+        'FCM permission request result: ${settings.authorizationStatus}',
+      );
+
+      // Log chi tiết
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        debugPrint('✅ FCM permission granted');
+      } else if (settings.authorizationStatus == AuthorizationStatus.denied) {
+        debugPrint('❌ FCM permission denied');
+      } else if (settings.authorizationStatus ==
+          AuthorizationStatus.notDetermined) {
+        debugPrint('⚠️ FCM permission not determined');
+      } else if (settings.authorizationStatus ==
+          AuthorizationStatus.provisional) {
+        debugPrint('⚠️ FCM permission provisional');
+      }
     } finally {
       _requestingPermission = false;
     }

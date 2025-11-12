@@ -97,13 +97,32 @@ class AppRoot extends ConsumerStatefulWidget {
 
 class _AppRootState extends ConsumerState<AppRoot> {
   bool _showingNotification = false;
+  bool _fcmInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(fcmServiceProvider).initialize();
-    });
+    // Gọi initialize() ngay lập tức, không đợi postFrameCallback
+    // để permission dialog hiển thị sớm nhất có thể
+    _initializeFCM();
+  }
+
+  Future<void> _initializeFCM() async {
+    if (_fcmInitialized) return;
+    _fcmInitialized = true;
+
+    // Đợi một chút để đảm bảo widget tree đã sẵn sàng
+    // nhưng không đợi quá lâu (chỉ 100ms)
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    if (!mounted) return;
+
+    try {
+      await ref.read(fcmServiceProvider).initialize();
+      debugPrint('✅ FCM initialized successfully');
+    } catch (e) {
+      debugPrint('❌ Error initializing FCM: $e');
+    }
   }
 
   @override
