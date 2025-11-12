@@ -18,9 +18,7 @@ class FcmService {
     if (_initialized) return;
     _initialized = true;
 
-    await _requestPermission();
-    await _syncToken();
-
+    // Setup listeners first (don't request permission yet)
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
 
@@ -28,6 +26,10 @@ class FcmService {
     if (initialMessage != null) {
       _handleMessageOpenedApp(initialMessage);
     }
+
+    // Try to get token (will work if permission already granted)
+    // Permission will be requested explicitly after user login
+    await _syncToken();
   }
 
   Future<void> _requestPermission() async {
@@ -44,6 +46,36 @@ class FcmService {
         provisional: false,
       );
       debugPrint('FCM permission status: ${settings.authorizationStatus}');
+    } finally {
+      _requestingPermission = false;
+    }
+  }
+
+  /// Request notification permission explicitly (call this after user interaction)
+  Future<bool> requestNotificationPermission() async {
+    if (_requestingPermission) return false;
+    _requestingPermission = true;
+    try {
+      final settings = await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        announcement: false,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+      );
+      debugPrint('FCM permission status: ${settings.authorizationStatus}');
+      final granted =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional;
+
+      // Sync token after permission is granted
+      if (granted) {
+        await _syncToken();
+      }
+
+      return granted;
     } finally {
       _requestingPermission = false;
     }
